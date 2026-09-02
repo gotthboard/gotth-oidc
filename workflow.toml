@@ -1,0 +1,60 @@
+schema_version = 1
+project = "gotth-oidc"
+profile = "strict"
+active = "extraction"
+
+[settings]
+worktree_root = "worktrees"
+workflow_root = "workflow"
+default_branch = "main"
+
+[toolchain]
+build = "go build ./..."
+test = "go test -mod=readonly -race -cover ./..."
+lint = "go vet -mod=readonly ./..."
+format = "gofmt -w"
+coverage = "go test -mod=readonly -coverprofile=coverage.out ./..."
+
+[coverage]
+map = "workflow/artifacts/global-coverage-map.md"
+profile = "strict"
+block_unresolved_high_risk = true
+exception_expiry_days = 14
+
+[feature.extraction]
+id = "extraction"
+slug = "extraction"
+name = "Extract hardened OIDC relying-party core"
+namespace = "oidc"
+parent = ""
+state = "done"
+risk = "high"
+assurance = "traceable-tests"
+created_at = "2026-09-02T23:20:00Z"
+activated_at = "2026-09-02T23:20:00Z"
+updated_at = "2026-09-02T23:34:00Z"
+completed_at = "2026-09-02T23:34:00Z"
+folder = "workflow/features/extraction"
+worktree = "."
+branch = "main"
+scope = ["Extract protocol and cryptographic mechanics behind a product-neutral API"]
+non_goals = ["Move application accounts, sessions, roles, persistence, routes, or provider configuration"]
+affected_files = ["**"]
+invariants = ["No OAuth token escapes the package", "All provider network endpoints remain on the exact issuer origin"]
+acceptance = ["Adversarial unit, race, vet, format, and coverage gates pass"]
+
+[feature.extraction.rollback]
+strategy = "delete_unpublished_repository"
+notes = "Consumers retain in-tree code until they pin an admitted module version"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.extraction.verification]]
+id = "verify"
+kind = "unit"
+command = "make verify"
+required = true
+timeout_seconds = 600
+side_effect = "local_write"
+network = false
+retries = 0
