@@ -14,3 +14,6 @@ Verified on 2026-09-02 with Go `go1.26.6-X:nodwarf5`:
 The remaining uncovered lines are defensive crypto/library error branches that
 cannot be induced through valid Go standard-library constructions without
 replacing the underlying implementations.
+
+Graphify 0.9.32 code-only audit: 135 nodes, 280 directed post-build edges, no
+self-loops, exact duplicate edges, or same-endpoint relation groups.
