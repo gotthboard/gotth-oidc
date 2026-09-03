@@ -1,18 +1,34 @@
 # Product requirements
 
-Provide multiple Go applications one small, auditable OIDC relying-party
-library without coupling protocol correctness to application storage or policy.
+Provide Go applications one auditable OpenID Connect relying-party library
+without coupling protocol correctness to application storage or product policy.
 
-Required behavior: exact issuer validation; same-origin discovery, token, and
-JWKS endpoints; HTTPS except numeric loopback development; bounded HTTP with redirects refused; confidential and public
-clients; Authorization Code with S256 PKCE, state, and nonce; ID-token and
-access-token-hash verification; provider-neutral identity output; protected
-attempt state; redacted diagnostics. A mixed provider algorithm advertisement
-must never expand the verifier beyond the package allowlist.
+The default profile is Authorization Code with S256 PKCE, state, nonce, exact
+issuer validation, strong ID-token validation, bounded HTTP, no redirects,
+provider-neutral identity output, protected attempt state, and redacted
+diagnostics. It must interoperate with conformant root issuers, discovery
+defaults, split-origin endpoint deployments, and legal endpoint query strings
+without silently widening trust.
 
-Non-goals: local users, sessions, cookies, RBAC, persistence, provider
-provisioning, refresh tokens, OAuth API access, and a deployed auth service.
+Every attempt binds the issuer, client identifier, redirect URI, response mode,
+requested authentication context, and token handling policy. Multi-audience ID
+tokens, authorization-response issuer parameters, token types, UserInfo
+subjects, and cross-JWT purposes are validated explicitly.
 
-Admission requires external-package API compilation, confidential and public
-end-to-end flows, malicious-provider and cryptographic-tamper coverage, race
-repetition, and clean-clone verification.
+Optional standardized capabilities are opt-in: UserInfo, claims requests,
+prompt/max-age/ACR policy, query/form-post/JARM responses, client-secret and JWT
+client authentication, PAR, JAR, encrypted JWTs, refresh/offline access,
+WebFinger, dynamic registration, RP-initiated and back-channel logout, DPoP,
+and mutual-TLS endpoint aliases. Unsupported provider capabilities fail during
+configuration, not halfway through an interactive login.
+
+Non-goals: local users, sessions, cookies, RBAC, application persistence,
+provider administration, authorization policy, protected-resource business
+clients, and a deployed authentication service. The library may return tokens
+only through an explicit opt-in result; the default completion path discards
+them.
+
+Admission requires an explicit standards matrix, external-package API
+compilation, confidential/public and optional-capability end-to-end flows,
+malicious-provider, mix-up, cross-JWT, replay, and cryptographic-tamper tests,
+fuzzing, race repetition, clean-clone verification, and recorded coverage gaps.

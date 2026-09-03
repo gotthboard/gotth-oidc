@@ -1,19 +1,39 @@
 # Architecture
 
-One in-process client owns validated provider metadata and a hardened HTTP
-client. The verifier receives only the safe intersection of provider-advertised
-signing algorithms; merely advertising one safe algorithm does not admit its
-unsafe neighbors. Network URLs require HTTPS except numeric loopback HTTP used
-by disposable development fixtures. `Begin` generates three independent 256-bit secrets, returns the browser
-authorization URL, and returns only a hashed/encrypted storage record.
-`Complete` accepts a caller-consumed storage record, recovers the nonce and PKCE
-verifier, exchanges the code once, verifies the token, and returns identity.
+One in-process client owns validated provider metadata, endpoint policy, client
+authentication, JOSE capabilities, and a bounded HTTP client. The verifier
+receives only the safe intersection of advertised signing algorithms. Network
+URLs require HTTPS except explicitly enabled numeric-loopback fixtures; each
+endpoint is independently allowlisted, so standards-compatible split origins
+do not become arbitrary outbound access.
+
+`Begin` remains the small local default. `BeginContext` accepts bounded request
+options and performs PAR when configured. Both generate independent 256-bit
+state, nonce, and PKCE values and return a versioned encrypted attempt context
+binding the issuer, client, redirect URI, response mode, requested claims,
+maximum age, ACR policy, and token mode.
+
+`ParseCallback` handles query and form-post success/error responses. JARM is
+verified as a purpose-bound JWT before its parameters are admitted. `Complete`
+preserves the token-discarding identity-only contract; `CompleteResponse`
+performs issuer/mix-up checks, code exchange, token-type validation, ID-token
+signature/decryption/audience/azp/time/nonce/ACR checks, optional UserInfo with
+exact subject equality, and returns identity. `CompleteTokens` is the explicit
+opt-in token-bearing variant. Refresh uses the same client authentication,
+sender constraint, endpoint policy, and ID-token validation rules.
+
+Optional cryptography is supplied through narrow signer/decrypter/proof
+interfaces. Built-in JOSE adapters enforce algorithm allowlists and JWT purpose;
+consumer keys remain consumer-owned. PAR, registration, UserInfo, token,
+revocation, and logout endpoints never share credentials or trust merely
+because their URLs look related.
 
 The storage boundary is deliberately caller-owned. A reusable library cannot
 pretend every application has the same database, session model, transaction,
 return-path policy, or role system.
 
-The package intentionally fixes the `openid profile email` identity profile,
-exact-origin endpoints, and supported token-authentication styles. Consumers
-needing OAuth API access, refresh tokens, arbitrary scopes, or split-origin
-providers need a different contract, not flags that quietly weaken this one.
+The package fixes `openid` as mandatory but makes additional scopes and profile
+requirements explicit bounded options. Strict same-origin operation remains an
+available policy, not an undocumented conformance restriction. Optional
+features are capability objects; absence disables them and discovery claims
+cannot enable behavior by themselves.

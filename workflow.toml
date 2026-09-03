@@ -1,7 +1,7 @@
 schema_version = 1
 project = "gotth-oidc"
 profile = "strict"
-active = "reusable-v0-admission"
+active = "rfc-complete-oidc"
 
 [settings]
 worktree_root = "worktrees"
@@ -107,6 +107,57 @@ kind = "unit"
 command = "make verify"
 required = true
 timeout_seconds = 600
+side_effect = "local_write"
+network = false
+retries = 0
+
+[feature.rfc-complete-oidc]
+id = "rfc-complete-oidc"
+slug = "rfc-complete-oidc"
+name = "Complete the reusable OIDC and OAuth standards boundary"
+namespace = "oidc"
+parent = ""
+state = "in_progress"
+risk = "critical"
+assurance = "traceable-tests"
+created_at = "2026-09-03T04:44:11Z"
+activated_at = "2026-09-03T04:44:11Z"
+updated_at = "2026-09-03T04:44:11Z"
+folder = "workflow/features/rfc-complete-oidc"
+worktree = "/home/linus/.openclaw/workspace/.artifacts/worktrees/gotth-oidc-rfc-complete"
+branch = "feature/rfc-complete-oidc"
+scope = ["Close mandatory OIDC Core, Discovery, OAuth, PKCE, issuer-response, and security-BCP gaps", "Add standardized optional relying-party capabilities behind explicit opt-in contracts", "Preserve the small default Authorization Code plus PKCE path"]
+non_goals = ["Application users, sessions, roles, cookies, routing, persistence, or authorization policy", "Operate an identity provider or authorization server", "Silently enable optional token retention, weaker transport, or broader endpoint trust", "Tag before a real consumer pin"]
+affected_files = ["README.md", "*.go", "docs/**", "workflow.toml", "workflow/features/rfc-complete-oidc/**", "workflow/artifacts/global-coverage-map.md", "go.mod", "go.sum"]
+invariants = ["The default path returns no OAuth token", "Every authorization attempt is bound to issuer, client, redirect URI, and requested validation policy", "Optional network endpoints are discovered, bounded, and independently policy-checked", "Unsafe algorithms and cross-JWT substitution fail closed", "Existing New, Begin, and Complete calls remain source-compatible"]
+acceptance = ["Mandatory ID-token audience, authorized-party, token-type, discovery, and mix-up checks pass", "Every standardized optional capability listed in docs/conformance.md has implementation and negative tests or an explicit consumer-boundary justification", "Format, vet, race, repeat-race, fuzz, clean-clone, external-consumer, and graph gates pass"]
+
+[[feature.rfc-complete-oidc.dependency]]
+id = "reusable-v0-admission"
+type = "prerequisite"
+state = "satisfied"
+evidence = "workflow/features/reusable-v0-admission/evidence/verification.md"
+satisfied_at = "2026-09-03T04:44:11Z"
+source_commit = "d7f8398bffc559de83440e9430421178a4503f40"
+
+[feature.rfc-complete-oidc.rollback]
+strategy = "revert_feature_commits"
+notes = "The repository is untagged and has no consumer pin; main at d7f8398 is the exact rollback point"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.rfc-complete-oidc.interface]]
+name = "Go relying-party API"
+kind = "api"
+stability = "unstable-unreleased"
+change = "additive-with-protected-attempt-version-change"
+
+[[feature.rfc-complete-oidc.verification]]
+id = "verify"
+kind = "unit-integration"
+command = "make verify"
+required = true
+timeout_seconds = 900
 side_effect = "local_write"
 network = false
 retries = 0
