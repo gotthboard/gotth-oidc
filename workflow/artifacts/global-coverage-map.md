@@ -15,8 +15,9 @@
 | Attempt generation/protection/context/recovery | `login_*_test.go`, `api_test.go`, `rfc_negative_test.go`, `fuzz_test.go` |
 | Public and external-consumer API | `api_test.go`, `public_api_test.go` |
 
-Implementation and hostile tests above now live under `pkg/oidc/`; the root
-`public_api_test.go` imports that canonical package.
+Implementation, hostile, and outside-package tests above now live under
+`pkg/oidc/`; `pkg/oidc/public_api_test.go` imports the canonical package
+exactly as an external consumer does.
 
 Statement coverage is 90.1%. Uncovered code is limited to deterministic
 standard-library construction/encoding failures, injected entropy failures,
