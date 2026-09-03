@@ -2,8 +2,9 @@
 
 ## Supported versions
 
-Unreleased Go library with an unstable pre-1.0 API. No version currently carries a
-separate long-term security-support promise. Once releases exist, supported
+Unreleased Go library with an unstable pre-1.0 API. No version currently
+carries a separate long-term security-support promise. Once releases exist,
+supported
 versions will be listed here and in the changelog.
 
 ## Reporting a vulnerability
