@@ -56,6 +56,9 @@ func TestDiscoverOIDCProviderBuildsPinnedConfidentialClient(t *testing.T) {
 	if strings.Contains(formatted, "client-secret") {
 		t.Fatalf("formatted provider configuration exposed secret: %q", formatted)
 	}
+	if response, err := got.httpClient.Transport.RoundTrip(nil); err == nil || response != nil {
+		t.Fatalf("nil hardened request = (%+v, %v), want nil/error", response, err)
+	}
 }
 
 func TestDiscoverOIDCProviderBuildsPinnedPublicClient(t *testing.T) {

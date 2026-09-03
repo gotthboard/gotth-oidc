@@ -26,10 +26,55 @@ func TestClientRejectsIncompleteUseAndRedactsFormatting(t *testing.T) {
 }
 
 func TestCloneStringDoesNotAlias(t *testing.T) {
+	if cloneString(nil) != nil {
+		t.Fatal("cloneString(nil) returned a value")
+	}
 	value := "member@example.com"
 	got := cloneString(&value)
 	if got == nil || *got != value || got == &value {
 		t.Fatalf("cloneString() = %#v", got)
+	}
+}
+
+func TestPublicAPIReturnsEveryFailureBoundary(t *testing.T) {
+	harness := newOIDCExchangeHarness(t)
+	defer harness.server.Close()
+
+	defaultEntropy, err := New(context.Background(), Config{
+		IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret",
+		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
+	})
+	if err != nil || defaultEntropy.entropy == nil {
+		t.Fatalf("New() default entropy = (%+v, %v)", defaultEntropy, err)
+	}
+	for name, client := range map[string]*Client{
+		"generation":    {entropy: errReader{cause: fmt.Errorf("generation failed")}},
+		"protection":    {entropy: bytes.NewReader(sequentialBytes(96))},
+		"authorization": {entropy: bytes.NewReader(sequentialBytes(120))},
+	} {
+		if authorization, beginErr := client.Begin(); beginErr == nil || authorization != (Authorization{}) {
+			t.Errorf("%s Begin() = (%+v, %v), want zero/error", name, authorization, beginErr)
+		}
+	}
+
+	client, err := New(context.Background(), Config{
+		IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret",
+		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
+		Entropy: bytes.NewReader(sequentialBytes(120)),
+	})
+	if err != nil {
+		t.Fatalf("New() returned error: %v", err)
+	}
+	authorization, err := client.Begin()
+	if err != nil {
+		t.Fatalf("Begin() returned error: %v", err)
+	}
+	parsed, err := url.Parse(authorization.URL)
+	if err != nil {
+		t.Fatalf("url.Parse() returned error: %v", err)
+	}
+	if identity, completeErr := client.Complete(context.Background(), parsed.Query().Get("state"), "exchange-failure", authorization.Attempt); completeErr == nil || identity != (Identity{}) {
+		t.Fatalf("Complete() = (%+v, %v), want zero/error", identity, completeErr)
 	}
 }
 
