@@ -1,4 +1,4 @@
-module git.dannyhunn.com/agents/gotth-oidc
+module github.com/gotthboard/gotth-oidc
 
 go 1.26.6
 

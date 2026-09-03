@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	gotthoidc "git.dannyhunn.com/agents/gotth-oidc"
+	gotthoidc "github.com/gotthboard/gotth-oidc"
 )
 
 func TestPublicAPIIsUsableOutsidePackage(t *testing.T) {

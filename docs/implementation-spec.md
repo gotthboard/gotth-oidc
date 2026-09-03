@@ -1,6 +1,6 @@
 # Implementation specification
 
-- Go module: `git.dannyhunn.com/agents/gotth-oidc`
+- Go module: `github.com/gotthboard/gotth-oidc`
 - Root package: `oidc`
 - Provider discovery timeout: 10 seconds
 - Maximum OIDC HTTP response: 512 KiB

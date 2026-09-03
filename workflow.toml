@@ -1,7 +1,7 @@
 schema_version = 1
 project = "gotth-oidc"
 profile = "strict"
-active = "rfc-complete-oidc"
+active = "github-distribution"
 
 [settings]
 worktree_root = "worktrees"
@@ -201,4 +201,75 @@ required = true
 timeout_seconds = 300
 side_effect = "external_read"
 network = false
+retries = 0
+
+[feature.github-distribution]
+id = "github-distribution"
+slug = "github-distribution"
+name = "Move public distribution identity to GitHub"
+namespace = "distribution"
+parent = ""
+state = "active"
+risk = "high"
+assurance = "traceable-tests"
+created_at = "2026-09-03T05:42:00Z"
+activated_at = "2026-09-03T05:42:00Z"
+updated_at = "2026-09-03T05:42:00Z"
+folder = "workflow/features/github-distribution"
+worktree = "/tmp/gotth-distribution-20260903/gotth-oidc"
+branch = "feature/github-distribution"
+scope = ["Move the Go module and repository-owned imports to github.com/gotthboard/gotth-oidc", "Document GitHub distribution and Forgejo development boundaries", "Prove clean public clone and import behavior"]
+non_goals = ["Select a license", "Move or replace a tag", "Reverse the Forgejo-to-GitHub mirror", "Change repository ownership or account type"]
+affected_files = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "go.mod", "*.go", "cmd/**", "docs/**", "workflow.toml", "workflow/features/github-distribution/**"]
+invariants = ["Forgejo remains canonical development", "GitHub receives refs only through the existing push mirror", "Runtime and public API behavior remain unchanged", "Existing tags remain immutable"]
+acceptance = ["The exact old module path is absent outside canonical Forgejo URLs", "Format, tidy, vet, test, clean-clone, public import, mirror parity, and two cold Judge passes succeed", "License and account decisions remain explicitly blocked"]
+
+[[feature.github-distribution.dependency]]
+id = "rfc-complete-oidc"
+type = "prerequisite"
+state = "satisfied"
+evidence = "workflow/features/rfc-complete-oidc/evidence/verification.md"
+satisfied_at = "2026-09-03T05:42:00Z"
+source_commit = "02a2b869b1331240dc52e23d116e6e1512a4d2ba"
+
+[feature.github-distribution.rollback]
+strategy = "revert_feature_commit"
+notes = "Revert the migration commit; never rewrite existing tags or mirror history"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.github-distribution.interface]]
+name = "Go module import path"
+kind = "api"
+stability = "unstable-unreleased"
+change = "breaking-module-identity"
+
+[[feature.github-distribution.verification]]
+id = "local"
+kind = "unit"
+command = "go mod tidy, go vet -mod=readonly ./..., and go test -mod=readonly ./..."
+required = true
+timeout_seconds = 1200
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.github-distribution.verification]]
+id = "public-import"
+kind = "integration"
+command = "clean clone and import from github.com/gotthboard/gotth-oidc"
+required = true
+timeout_seconds = 1200
+side_effect = "external_read"
+network = true
+retries = 0
+
+[[feature.github-distribution.verification]]
+id = "mirror-parity"
+kind = "integration"
+command = "compare exact Forgejo and GitHub advertised heads and tags"
+required = true
+timeout_seconds = 300
+side_effect = "external_read"
+network = true
 retries = 0

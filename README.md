@@ -1,5 +1,10 @@
 # gotth-oidc
 
+> **Distribution:** GitHub is the public clone, Go import, and future release endpoint.
+> Forgejo remains canonical development and the issue/contribution location.
+> See [the distribution contract](docs/distribution.md).
+
+
 `gotth-oidc` is a storage-neutral Go OpenID Connect relying-party library. Its
 small default is Authorization Code with S256 PKCE, state, nonce, exact issuer
 validation, bounded redirect-refusing HTTP, verified ID tokens, and protected
@@ -45,3 +50,19 @@ also remain consumer responsibilities.
 
 See `docs/conformance.md` for the standards and capability matrix. The module
 remains untagged until a real consumer pins its first compatibility contract.
+
+## Installation, compatibility, and support
+
+Unreleased. The Go API is pre-1.0; the exact supported standards surface is recorded in `docs/conformance.md`.
+
+No post-migration version has been tagged. To inspect the current source
+before the first admitted release:
+
+```sh
+go get github.com/gotthboard/gotth-oidc@main
+```
+
+The repository has no selected license and no long-term support promise.
+Versioning, release admission, security reporting, and contribution details are
+in [the release policy](docs/RELEASING.md), [security policy](SECURITY.md), and
+[contribution guide](CONTRIBUTING.md).
