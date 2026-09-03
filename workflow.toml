@@ -117,12 +117,13 @@ slug = "rfc-complete-oidc"
 name = "Complete the reusable OIDC and OAuth standards boundary"
 namespace = "oidc"
 parent = ""
-state = "in_progress"
+state = "done"
 risk = "critical"
 assurance = "traceable-tests"
 created_at = "2026-09-03T04:44:11Z"
 activated_at = "2026-09-03T04:44:11Z"
-updated_at = "2026-09-03T04:44:11Z"
+updated_at = "2026-09-03T05:31:05Z"
+completed_at = "2026-09-03T05:31:05Z"
 folder = "workflow/features/rfc-complete-oidc"
 worktree = "/home/linus/.openclaw/workspace/.artifacts/worktrees/gotth-oidc-rfc-complete"
 branch = "feature/rfc-complete-oidc"
@@ -159,5 +160,45 @@ command = "make verify"
 required = true
 timeout_seconds = 900
 side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.rfc-complete-oidc.verification]]
+id = "repeat-race"
+kind = "stability"
+command = "run go test -race ./... fifty consecutive times"
+required = true
+timeout_seconds = 1800
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.rfc-complete-oidc.verification]]
+id = "fuzz"
+kind = "fuzz"
+command = "run each declared Fuzz target for five seconds"
+required = true
+timeout_seconds = 300
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.rfc-complete-oidc.verification]]
+id = "clean-clone"
+kind = "integration"
+command = "make verify from a fresh local clone"
+required = true
+timeout_seconds = 900
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.rfc-complete-oidc.verification]]
+id = "graph"
+kind = "architecture"
+command = "graphify extract --code-only and structural collision audit"
+required = true
+timeout_seconds = 300
+side_effect = "external_read"
 network = false
 retries = 0

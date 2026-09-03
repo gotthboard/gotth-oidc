@@ -18,7 +18,8 @@
 - ID-token validation: exact issuer, safe algorithm, signature, expiry, nonce,
   audience, authorized party, requested max-age/auth-time, ACR, optional access
   token hash, and explicit JWT purpose
-- Token responses require a supported Bearer, DPoP, or mTLS-bound token type
+- Token responses require the expected Bearer or DPoP token type; mutual TLS
+  uses validated endpoint aliases and the caller's certificate-bearing transport
 - Identity minimum: issuer and subject. Name, verified email, safe picture, and
   UserInfo are consumer-configurable; UserInfo subject must equal ID-token subject
 - Authorization callbacks support query, form-post, OAuth errors, RFC 9207
@@ -28,8 +29,8 @@
   self_signed_tls_client_auth
 - Optional direct operations: WebFinger, dynamic registration, PAR, refresh,
   UserInfo, RP-initiated logout, and back-channel logout-token verification
-- Optional sender constraints: DPoP proof generation/nonce retry and RFC 8705
-  mutual-TLS endpoint aliases
+- Optional sender constraints: DPoP authorization-code binding, proof
+  generation, nonce retry, and RFC 8705 mutual-TLS endpoint aliases
 - Authorization-shaped claims are not decoded into the public result
 - Callers must atomically consume attempts before calling `Complete`
 - Consumers own attempt expiry/atomic consumption, browser routing, session
