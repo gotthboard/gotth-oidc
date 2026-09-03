@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -144,12 +145,16 @@ type oidcExchangeHarness struct {
 	issuer          string
 	material        loginMaterial
 	signer          jose.Signer
+	signingKey      *ecdsa.PrivateKey
 	unsafeSigner    jose.Signer
 	invalidSigner   jose.Signer
 	publicJWK       jose.JSONWebKey
 	unsafeJWK       jose.JSONWebKey
 	algorithms      string
 	publicClient    bool
+	userInfoSubject string
+	userInfoMode    string
+	parForm         url.Values
 	mutex           sync.Mutex
 	tokenRequests   map[string]int
 	jwksRequests    int
@@ -190,10 +195,10 @@ func newOIDCExchangeHarness(t *testing.T) *oidcExchangeHarness {
 		t.Fatalf("generateLoginMaterial() returned error: %v", err)
 	}
 	harness := &oidcExchangeHarness{
-		t: t, material: material, signer: newSigner(key), unsafeSigner: unsafeSigner, invalidSigner: newSigner(invalidKey),
+		t: t, material: material, signer: newSigner(key), signingKey: key, unsafeSigner: unsafeSigner, invalidSigner: newSigner(invalidKey),
 		publicJWK:     jose.JSONWebKey{Key: &key.PublicKey, KeyID: "exchange-test-key", Algorithm: string(jose.ES256), Use: "sig"},
 		unsafeJWK:     jose.JSONWebKey{Key: unsafeKey, KeyID: "unsafe-hs-key", Algorithm: string(jose.HS256), Use: "sig"},
-		algorithms:    `["ES256"]`,
+		algorithms:    `["RS256","ES256"]`,
 		tokenRequests: make(map[string]int), exchangeEntered: make(chan struct{}),
 	}
 	harness.server = httptest.NewServer(http.HandlerFunc(harness.serveHTTP))
@@ -217,8 +222,8 @@ func (harness *oidcExchangeHarness) serveHTTP(writer http.ResponseWriter, reques
 	switch request.URL.Path {
 	case "/application/o/gotth-bb/.well-known/openid-configuration":
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprintf(writer, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q,"id_token_signing_alg_values_supported":%s,"token_endpoint_auth_methods_supported":["client_secret_basic","none"]}`,
-			harness.issuer, harness.server.URL+"/authorize", harness.server.URL+"/token", harness.server.URL+"/jwks", harness.algorithms)
+		_, _ = fmt.Fprintf(writer, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q,"userinfo_endpoint":%q,"pushed_authorization_request_endpoint":%q,"end_session_endpoint":%q,"revocation_endpoint":%q,"check_session_iframe":%q,"response_types_supported":["code"],"response_modes_supported":["query","form_post","jwt","query.jwt","form_post.jwt"],"subject_types_supported":["public"],"id_token_signing_alg_values_supported":%s,"userinfo_signing_alg_values_supported":["ES256"],"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","none","private_key_jwt","tls_client_auth","self_signed_tls_client_auth"],"token_endpoint_auth_signing_alg_values_supported":["ES256","HS256"],"claims_parameter_supported":true,"acr_values_supported":["urn:loa:2"],"request_parameter_supported":true,"request_object_signing_alg_values_supported":["ES256"],"authorization_signing_alg_values_supported":["ES256"],"authorization_response_iss_parameter_supported":true,"frontchannel_logout_supported":true,"backchannel_logout_supported":true,"dpop_signing_alg_values_supported":["ES256"],"mtls_endpoint_aliases":{"token_endpoint":%q,"userinfo_endpoint":%q,"pushed_authorization_request_endpoint":%q,"revocation_endpoint":%q}}`,
+			harness.issuer, harness.server.URL+"/authorize", harness.server.URL+"/token", harness.server.URL+"/jwks", harness.server.URL+"/userinfo", harness.server.URL+"/par", harness.server.URL+"/logout", harness.server.URL+"/revoke", harness.server.URL+"/session", harness.algorithms, harness.server.URL+"/token", harness.server.URL+"/userinfo", harness.server.URL+"/par", harness.server.URL+"/revoke")
 	case "/jwks":
 		harness.mutex.Lock()
 		harness.jwksRequests++
@@ -227,6 +232,68 @@ func (harness *oidcExchangeHarness) serveHTTP(writer http.ResponseWriter, reques
 		_ = json.NewEncoder(writer).Encode(map[string]any{"keys": []jose.JSONWebKey{harness.publicJWK, harness.unsafeJWK}})
 	case "/token":
 		harness.serveToken(writer, request)
+	case "/userinfo":
+		if harness.userInfoMode == "status" {
+			writer.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		if harness.userInfoMode == "oversize" {
+			writer.Header().Set("Content-Type", "application/json")
+			_, _ = writer.Write([]byte(strings.Repeat(" ", maxDirectResponseBytes+1)))
+			return
+		}
+		if harness.userInfoMode == "invalid-content" {
+			writer.Header().Set("Content-Type", "text/plain")
+			_, _ = writer.Write([]byte(`{"sub":"subject-1"}`))
+			return
+		}
+		if harness.userInfoMode == "invalid-json" {
+			writer.Header().Set("Content-Type", "application/json")
+			_, _ = writer.Write([]byte("{"))
+			return
+		}
+		subject := harness.userInfoSubject
+		if subject == "" {
+			subject = "subject-1"
+		}
+		claims := map[string]any{"iss": harness.issuer, "aud": "gotth-bb", "sub": subject, "name": "UserInfo Name", "email": "userinfo@example.com", "email_verified": true, "picture": harness.server.URL + "/userinfo-picture"}
+		if strings.HasPrefix(harness.userInfoMode, "signed") {
+			if harness.userInfoMode == "signed-wrong-issuer" {
+				claims["iss"] = "https://wrong.example"
+			}
+			if harness.userInfoMode == "signed-wrong-audience" {
+				claims["aud"] = "wrong-client"
+			}
+			signer := harness.signer
+			if harness.userInfoMode == "signed-invalid-signature" {
+				signer = harness.invalidSigner
+			}
+			raw, err := jwt.Signed(signer).Claims(claims).Serialize()
+			if err != nil {
+				harness.t.Errorf("sign UserInfo JWT: %v", err)
+				writer.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			writer.Header().Set("Content-Type", "application/jwt")
+			_, _ = writer.Write([]byte(raw))
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(claims)
+	case "/par":
+		if err := request.ParseForm(); err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		harness.mutex.Lock()
+		harness.parForm = request.Form
+		harness.mutex.Unlock()
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(map[string]any{"request_uri": "urn:example:par:1", "expires_in": 60})
+	case "/revoke":
+		writer.WriteHeader(http.StatusOK)
+	case "/session", "/logout":
+		writer.WriteHeader(http.StatusOK)
 	default:
 		http.NotFound(writer, request)
 	}
@@ -239,6 +306,9 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 		return
 	}
 	code := request.Form.Get("code")
+	if request.Form.Get("grant_type") == "refresh_token" {
+		code = "refresh"
+	}
 	harness.mutex.Lock()
 	harness.tokenRequests[code]++
 	harness.mutex.Unlock()
@@ -252,9 +322,11 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 	if harness.publicClient {
 		validClientAuthentication = !basic && request.Form.Get("client_id") == "gotth-bb" && request.Form.Get("client_secret") == ""
 	}
-	if request.Method != http.MethodPost || !validClientAuthentication ||
-		request.Form.Get("grant_type") != "authorization_code" || request.Form.Get("redirect_uri") != "https://forum.example/bb/auth/callback" ||
-		request.Form.Get("code_verifier") != harness.material.pkceVerifier {
+	validGrant := request.Form.Get("grant_type") == "authorization_code" && request.Form.Get("redirect_uri") == "https://forum.example/bb/auth/callback" && request.Form.Get("code_verifier") == harness.material.pkceVerifier
+	if code == "refresh" {
+		validGrant = request.Form.Get("refresh_token") == "refresh-token"
+	}
+	if request.Method != http.MethodPost || !validClientAuthentication || !validGrant {
 		harness.t.Errorf("invalid token request method/auth/form for code %q", code)
 		writer.WriteHeader(http.StatusBadRequest)
 		return
@@ -284,6 +356,7 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 	now := time.Now()
 	issuer := harness.issuer
 	audience := "gotth-bb"
+	var audiences any = audience
 	expiry := now.Add(5 * time.Minute)
 	nonce := harness.material.nonce
 	subject := "subject-1"
@@ -301,6 +374,11 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 		issuer += "wrong"
 	case "wrong-audience":
 		audience = "other-client"
+		audiences = audience
+	case "multi-audience-untrusted":
+		audiences = []string{"gotth-bb", "other-api"}
+	case "multi-audience-trusted":
+		audiences = []string{"gotth-bb", "trusted-api"}
 	case "expired-token":
 		expiry = now.Add(-time.Hour)
 	case "nonce-mismatch":
@@ -319,7 +397,18 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 		accessToken = ""
 	}
 	claims := map[string]any{
-		"iss": issuer, "sub": subject, "aud": audience, "exp": expiry.Unix(), "iat": now.Unix(), "nonce": nonce, "at_hash": atHash,
+		"iss": issuer, "sub": subject, "aud": audiences, "exp": expiry.Unix(), "iat": now.Unix(), "nonce": nonce, "at_hash": atHash, "auth_time": now.Unix(), "acr": "urn:loa:2",
+	}
+	if code == "multi-audience-untrusted" || code == "multi-audience-trusted" {
+		claims["azp"] = "gotth-bb"
+	}
+	if code == "wrong-azp" {
+		claims["aud"] = []string{"gotth-bb", "trusted-api"}
+		claims["azp"] = "other-client"
+	}
+	if code == "refresh" {
+		delete(claims, "nonce")
+		delete(claims, "at_hash")
 	}
 	for key, value := range profile {
 		claims[key] = value
@@ -330,9 +419,18 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	_ = json.NewEncoder(writer).Encode(map[string]any{
-		"access_token": accessToken, "token_type": "Bearer", "expires_in": 300, "id_token": rawIDToken,
-	})
+	tokenType := "Bearer"
+	if code == "wrong-token-type" {
+		tokenType = "MAC"
+	}
+	response := map[string]any{"access_token": accessToken, "token_type": tokenType, "expires_in": 300, "id_token": rawIDToken, "scope": "openid profile email"}
+	if code == "missing-token-type" {
+		delete(response, "token_type")
+	}
+	if code == "successful-code" {
+		response["refresh_token"] = "refresh-token"
+	}
+	_ = json.NewEncoder(writer).Encode(response)
 }
 
 func TestExchangeInitialLoginPinsSafeAdvertisedAlgorithms(t *testing.T) {
@@ -340,7 +438,7 @@ func TestExchangeInitialLoginPinsSafeAdvertisedAlgorithms(t *testing.T) {
 
 	harness := newOIDCExchangeHarness(t)
 	defer harness.server.Close()
-	harness.algorithms = `["ES256","HS256","none","ES256"]`
+	harness.algorithms = `["RS256","ES256","HS256","none","ES256"]`
 	provider := harness.discover(t)
 	got, err := provider.exchangeInitialLogin(context.Background(), "unsafe-hs256", harness.material)
 	if err == nil || got != (verifiedIdentityClaims{}) {

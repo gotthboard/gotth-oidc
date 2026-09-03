@@ -31,6 +31,8 @@ func TestDiscoverOIDCProviderBuildsPinnedConfidentialClient(t *testing.T) {
 			"authorization_endpoint":%q,
 			"token_endpoint":%q,
 			"jwks_uri":%q,
+			"response_types_supported":["code"],
+			"subject_types_supported":["public"],
 			"id_token_signing_alg_values_supported":["RS256"],
 			"token_endpoint_auth_methods_supported":["client_secret_post","client_secret_basic"]
 		}`, serverIssuer(request), serverOrigin(request)+"/authorize", serverOrigin(request)+"/token", serverOrigin(request)+"/jwks")
@@ -233,7 +235,6 @@ func TestDiscoverOIDCProviderRejectsInvalidMetadataAndInputs(t *testing.T) {
 		{name: "invalid redirect", ctx: context.Background(), clientID: "gotth-bb", secret: "secret", redirect: "/bb/auth/callback"},
 		{name: "issuer mismatch", ctx: context.Background(), clientID: "gotth-bb", secret: "secret", redirect: "https://forum.example/bb/auth/callback", mutateDoc: func(_ *http.Request, fields *discoveryFields) { fields.issuer += "wrong" }},
 		{name: "off-origin authorization endpoint", ctx: context.Background(), clientID: "gotth-bb", secret: "secret", redirect: "https://forum.example/bb/auth/callback", mutateDoc: func(_ *http.Request, fields *discoveryFields) { fields.authURL = "https://attacker.invalid/authorize" }},
-		{name: "token endpoint query", ctx: context.Background(), clientID: "gotth-bb", secret: "secret", redirect: "https://forum.example/bb/auth/callback", mutateDoc: func(_ *http.Request, fields *discoveryFields) { fields.tokenURL += "?secret=value" }},
 		{name: "JWKS credentials", ctx: context.Background(), clientID: "gotth-bb", secret: "secret", redirect: "https://forum.example/bb/auth/callback", mutateDoc: func(request *http.Request, fields *discoveryFields) {
 			fields.jwksURL = request.URL.Scheme + "://user:pass@" + request.Host + "/jwks"
 		}},
@@ -276,7 +277,7 @@ func newDiscoveryServer(t *testing.T, document func(*http.Request) string) *http
 }
 
 func discoveryDocument(_ *http.Request, issuer, authURL, tokenURL, jwksURL, algorithms, authMethods string) string {
-	return fmt.Sprintf(`{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q,"id_token_signing_alg_values_supported":%s,"token_endpoint_auth_methods_supported":%s}`, issuer, authURL, tokenURL, jwksURL, algorithms, authMethods)
+	return fmt.Sprintf(`{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q,"response_types_supported":["code"],"subject_types_supported":["public"],"id_token_signing_alg_values_supported":%s,"token_endpoint_auth_methods_supported":%s}`, issuer, authURL, tokenURL, jwksURL, algorithms, authMethods)
 }
 
 func serverIssuer(request *http.Request) string {

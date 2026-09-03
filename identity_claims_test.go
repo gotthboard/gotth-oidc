@@ -76,7 +76,6 @@ func TestValidateIdentityClaimsRejectsInvalidCoordinatesAndApprovedClaims(t *tes
 		{name: "short email", issuer: "issuer", subject: "subject", claims: `{"name":"Member","email":"x","email_verified":true}`},
 		{name: "long email", issuer: "issuer", subject: "subject", claims: `{"name":"Member","email":"` + strings.Repeat("e", 321) + `","email_verified":true}`},
 		{name: "email control", issuer: "issuer", subject: "subject", claims: `{"name":"Member","email":"member@example.com\n","email_verified":true}`},
-		{name: "missing email verification", issuer: "issuer", subject: "subject", claims: `{"name":"Member","email":"member@example.com"}`},
 		{name: "invalid email verification", issuer: "issuer", subject: "subject", claims: `{"name":"Member","email":"member@example.com","email_verified":"yes"}`},
 		{name: "verification without email has invalid type", issuer: "issuer", subject: "subject", claims: `{"name":"Member","email_verified":"yes"}`},
 		{name: "non-string picture", issuer: "issuer", subject: "subject", claims: `{"name":"Member","picture":42}`},

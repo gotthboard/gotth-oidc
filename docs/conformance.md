@@ -22,7 +22,7 @@ responses, JWT client authentication (RFC 7523), mutual TLS (RFC 8705), and DPoP
 | Token return, offline access, refresh | opt-in | caller explicitly assumes token custody |
 | Dynamic registration and WebFinger | direct API | bounded HTTPS operations and exact issuer checks |
 | RP-initiated/back-channel logout | opt-in | state/audience/events/time validation |
-| DPoP and mutual TLS | opt-in | sender constraint bound to endpoint and token mode |
+| DPoP and mutual TLS | opt-in | code bound with `dpop_jkt`; proofs and endpoint aliases enforced |
 
 Implicit and Hybrid flows remain deliberately unsupported: RFC 9700 deprecates
 or discourages response types that expose access tokens or ID tokens through the

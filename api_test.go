@@ -43,6 +43,7 @@ func TestPublicAPIReturnsEveryFailureBoundary(t *testing.T) {
 	defaultEntropy, err := New(context.Background(), Config{
 		IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret",
 		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
+		AllowInsecureLoopback: true,
 	})
 	if err != nil || defaultEntropy.entropy == nil {
 		t.Fatalf("New() default entropy = (%+v, %v)", defaultEntropy, err)
@@ -60,7 +61,7 @@ func TestPublicAPIReturnsEveryFailureBoundary(t *testing.T) {
 	client, err := New(context.Background(), Config{
 		IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret",
 		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
-		Entropy: bytes.NewReader(sequentialBytes(120)),
+		Entropy: bytes.NewReader(sequentialBytes(120)), AllowInsecureLoopback: true,
 	})
 	if err != nil {
 		t.Fatalf("New() returned error: %v", err)
@@ -84,7 +85,7 @@ func TestConfidentialClientCompletesOneHardenedFlow(t *testing.T) {
 	client, err := New(context.Background(), Config{
 		IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret",
 		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
-		Entropy: bytes.NewReader(sequentialBytes(120)),
+		Entropy: bytes.NewReader(sequentialBytes(120)), AllowInsecureLoopback: true,
 	})
 	if err != nil {
 		t.Fatalf("New() returned error: %v", err)
@@ -118,7 +119,7 @@ func TestPublicClientCompletesOneHardenedFlow(t *testing.T) {
 	client, err := New(context.Background(), Config{
 		IssuerURL: harness.issuer, ClientID: "gotth-bb",
 		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
-		Entropy: bytes.NewReader(sequentialBytes(120)),
+		Entropy: bytes.NewReader(sequentialBytes(120)), AllowInsecureLoopback: true,
 	})
 	if err != nil {
 		t.Fatalf("New() returned error: %v", err)

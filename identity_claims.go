@@ -27,6 +27,10 @@ type verifiedIdentityClaims struct {
 // fields are individually bounded to the database contract (2,048, 512, 80,
 // 320, and 2,048 Unicode code points respectively).
 func validateIdentityClaims(issuer, subject string, claims map[string]json.RawMessage) (verifiedIdentityClaims, error) {
+	return validateIdentityClaimsWithPolicy(issuer, subject, claims, true, false)
+}
+
+func validateIdentityClaimsWithPolicy(issuer, subject string, claims map[string]json.RawMessage, requireName, requireEmail bool) (verifiedIdentityClaims, error) {
 	validBoundedText := func(value string, minimum, maximum int) bool {
 		if !utf8.ValidString(value) {
 			return false
@@ -55,8 +59,8 @@ func validateIdentityClaims(issuer, subject string, claims map[string]json.RawMe
 		}
 		return value, true, nil
 	}
-	displayName, _, err := decodeString("name", true)
-	if err != nil || !validBoundedText(displayName, 1, 80) {
+	displayName, namePresent, err := decodeString("name", requireName)
+	if err != nil || (namePresent && !validBoundedText(displayName, 1, 80)) {
 		return verifiedIdentityClaims{}, fmt.Errorf("verified OIDC name claim is invalid")
 	}
 	email, emailPresent, err := decodeString("email", false)
@@ -70,8 +74,6 @@ func validateIdentityClaims(issuer, subject string, claims map[string]json.RawMe
 			return verifiedIdentityClaims{}, fmt.Errorf("verified OIDC email_verified claim must be a boolean")
 		}
 		emailVerified = bytes.Equal(trimmed, []byte("true"))
-	} else if emailPresent {
-		return verifiedIdentityClaims{}, fmt.Errorf("verified OIDC email claim requires email_verified")
 	}
 	var acceptedEmail *string
 	if emailPresent {
@@ -81,6 +83,9 @@ func validateIdentityClaims(issuer, subject string, claims map[string]json.RawMe
 		if emailVerified {
 			acceptedEmail = &email
 		}
+	}
+	if requireEmail && acceptedEmail == nil {
+		return verifiedIdentityClaims{}, fmt.Errorf("verified OIDC email claim is required and must be verified")
 	}
 	picture, picturePresent, err := decodeString("picture", false)
 	if err != nil {
@@ -92,7 +97,7 @@ func validateIdentityClaims(issuer, subject string, claims map[string]json.RawMe
 			return verifiedIdentityClaims{}, fmt.Errorf("verified OIDC picture claim is invalid")
 		}
 		parsed, err := url.Parse(picture)
-		if err != nil || parsed.Opaque != "" || parsed.Host == "" || parsed.Hostname() == "" || parsed.Path == "" ||
+		if err != nil || parsed.Opaque != "" || parsed.Host == "" || parsed.Hostname() == "" ||
 			(parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil || parsed.ForceQuery || parsed.Fragment != "" ||
 			strings.IndexFunc(parsed.Path, unicode.IsControl) >= 0 || strings.IndexFunc(parsed.RawQuery, unicode.IsControl) >= 0 || parsed.String() != picture {
 			return verifiedIdentityClaims{}, fmt.Errorf("verified OIDC picture claim is not a safe canonical URL")
