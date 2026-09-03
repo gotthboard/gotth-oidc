@@ -108,6 +108,9 @@ func TestDiscoverOIDCProviderRejectsInvalidCanonicalURLs(t *testing.T) {
 		{name: "unsupported issuer scheme", issuer: url.URL{Scheme: "ftp", Host: "auth.example", Path: "/application/o/gotth-bb/"}, redirect: "https://forum.example/bb/auth/callback"},
 		{name: "unsupported callback scheme", issuer: validIssuer, redirect: "ftp://forum.example/bb/auth/callback"},
 		{name: "noncanonical callback scheme", issuer: validIssuer, redirect: "HTTPS://forum.example/bb/auth/callback"},
+		{name: "remote HTTP issuer", issuer: url.URL{Scheme: "http", Host: "auth.example", Path: "/application/o/gotth-bb/"}, redirect: "https://forum.example/bb/auth/callback"},
+		{name: "remote HTTP callback", issuer: validIssuer, redirect: "http://forum.example/bb/auth/callback"},
+		{name: "localhost HTTP callback", issuer: validIssuer, redirect: "http://localhost/bb/auth/callback"},
 	} {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
@@ -119,6 +122,26 @@ func TestDiscoverOIDCProviderRejectsInvalidCanonicalURLs(t *testing.T) {
 				t.Fatalf("discoverOIDCProvider() returned an unsafe result: %+v, %v", got, err)
 			}
 		})
+	}
+}
+
+func TestHTTPSOrNumericLoopbackHTTP(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		raw  string
+		want bool
+	}{
+		{raw: "https://auth.example/path", want: true},
+		{raw: "http://127.0.0.1/path", want: true},
+		{raw: "http://[::1]/path", want: true},
+		{raw: "http://localhost/path", want: false},
+		{raw: "http://192.0.2.1/path", want: false},
+		{raw: "ftp://127.0.0.1/path", want: false},
+	} {
+		parsed := mustProviderURL(t, test.raw)
+		if got := isHTTPSOrNumericLoopbackHTTP(parsed); got != test.want {
+			t.Errorf("isHTTPSOrNumericLoopbackHTTP(%q) = %v, want %v", test.raw, got, test.want)
+		}
 	}
 }
 

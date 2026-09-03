@@ -40,7 +40,7 @@ func TestValidateIdentityClaimsOmitsAbsentOrUnverifiedOptionalFields(t *testing.
 	}
 }
 
-func TestValidateIdentityClaimsAllowsHTTPAvatarOnlyForDevelopmentHTTPIssuer(t *testing.T) {
+func TestValidateIdentityClaimsAllowsNumericLoopbackHTTPAvatar(t *testing.T) {
 	t.Parallel()
 
 	got, err := validateIdentityClaims("http://127.0.0.1/application/o/gotth-bb/", "subject", rawIdentityClaims(t, `{"name":"Member","picture":"http://127.0.0.1/avatar.png"}`))
@@ -88,6 +88,7 @@ func TestValidateIdentityClaimsRejectsInvalidCoordinatesAndApprovedClaims(t *tes
 		{name: "picture empty query", issuer: "issuer", subject: "subject", claims: `{"name":"Member","picture":"https://example.com/avatar.png?"}`},
 		{name: "picture scheme", issuer: "issuer", subject: "subject", claims: `{"name":"Member","picture":"ftp://example.com/avatar.png"}`},
 		{name: "HTTP picture for HTTPS issuer", issuer: "https://auth.example/application/o/gotth-bb/", subject: "subject", claims: `{"name":"Member","picture":"http://example.com/avatar.png"}`},
+		{name: "remote HTTP picture for loopback issuer", issuer: "http://127.0.0.1/application/o/gotth-bb/", subject: "subject", claims: `{"name":"Member","picture":"http://example.com/avatar.png"}`},
 		{name: "picture control", issuer: "issuer", subject: "subject", claims: `{"name":"Member","picture":"https://example.com/avatar%0A.png"}`},
 	} {
 		test := test

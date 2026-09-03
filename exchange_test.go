@@ -144,8 +144,12 @@ type oidcExchangeHarness struct {
 	issuer          string
 	material        loginMaterial
 	signer          jose.Signer
+	unsafeSigner    jose.Signer
 	invalidSigner   jose.Signer
 	publicJWK       jose.JSONWebKey
+	unsafeJWK       jose.JSONWebKey
+	algorithms      string
+	publicClient    bool
 	mutex           sync.Mutex
 	tokenRequests   map[string]int
 	jwksRequests    int
@@ -173,13 +177,23 @@ func newOIDCExchangeHarness(t *testing.T) *oidcExchangeHarness {
 		}
 		return signer
 	}
+	unsafeKey := []byte("0123456789abcdef0123456789abcdef")
+	unsafeSigner, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: unsafeKey},
+		new(jose.SignerOptions).WithType("JWT").WithHeader(jose.HeaderKey("kid"), "unsafe-hs-key"),
+	)
+	if err != nil {
+		t.Fatalf("jose.NewSigner(HS256) returned error: %v", err)
+	}
 	material, err := generateLoginMaterial(bytes.NewReader(sequentialBytes(96)))
 	if err != nil {
 		t.Fatalf("generateLoginMaterial() returned error: %v", err)
 	}
 	harness := &oidcExchangeHarness{
-		t: t, material: material, signer: newSigner(key), invalidSigner: newSigner(invalidKey),
+		t: t, material: material, signer: newSigner(key), unsafeSigner: unsafeSigner, invalidSigner: newSigner(invalidKey),
 		publicJWK:     jose.JSONWebKey{Key: &key.PublicKey, KeyID: "exchange-test-key", Algorithm: string(jose.ES256), Use: "sig"},
+		unsafeJWK:     jose.JSONWebKey{Key: unsafeKey, KeyID: "unsafe-hs-key", Algorithm: string(jose.HS256), Use: "sig"},
+		algorithms:    `["ES256"]`,
 		tokenRequests: make(map[string]int), exchangeEntered: make(chan struct{}),
 	}
 	harness.server = httptest.NewServer(http.HandlerFunc(harness.serveHTTP))
@@ -203,14 +217,14 @@ func (harness *oidcExchangeHarness) serveHTTP(writer http.ResponseWriter, reques
 	switch request.URL.Path {
 	case "/application/o/gotth-bb/.well-known/openid-configuration":
 		writer.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprintf(writer, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q,"id_token_signing_alg_values_supported":["ES256"],"token_endpoint_auth_methods_supported":["client_secret_basic"]}`,
-			harness.issuer, harness.server.URL+"/authorize", harness.server.URL+"/token", harness.server.URL+"/jwks")
+		_, _ = fmt.Fprintf(writer, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q,"id_token_signing_alg_values_supported":%s,"token_endpoint_auth_methods_supported":["client_secret_basic","none"]}`,
+			harness.issuer, harness.server.URL+"/authorize", harness.server.URL+"/token", harness.server.URL+"/jwks", harness.algorithms)
 	case "/jwks":
 		harness.mutex.Lock()
 		harness.jwksRequests++
 		harness.mutex.Unlock()
 		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(map[string]any{"keys": []jose.JSONWebKey{harness.publicJWK}})
+		_ = json.NewEncoder(writer).Encode(map[string]any{"keys": []jose.JSONWebKey{harness.publicJWK, harness.unsafeJWK}})
 	case "/token":
 		harness.serveToken(writer, request)
 	default:
@@ -234,7 +248,11 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 		return
 	}
 	clientID, clientSecret, basic := request.BasicAuth()
-	if request.Method != http.MethodPost || !basic || clientID != "gotth-bb" || clientSecret != "client-secret" ||
+	validClientAuthentication := basic && clientID == "gotth-bb" && clientSecret == "client-secret"
+	if harness.publicClient {
+		validClientAuthentication = !basic && request.Form.Get("client_id") == "gotth-bb" && request.Form.Get("client_secret") == ""
+	}
+	if request.Method != http.MethodPost || !validClientAuthentication ||
 		request.Form.Get("grant_type") != "authorization_code" || request.Form.Get("redirect_uri") != "https://forum.example/bb/auth/callback" ||
 		request.Form.Get("code_verifier") != harness.material.pkceVerifier {
 		harness.t.Errorf("invalid token request method/auth/form for code %q", code)
@@ -275,6 +293,8 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 	}
 	signer := harness.signer
 	switch code {
+	case "unsafe-hs256":
+		signer = harness.unsafeSigner
 	case "invalid-signature":
 		signer = harness.invalidSigner
 	case "wrong-issuer":
@@ -313,6 +333,23 @@ func (harness *oidcExchangeHarness) serveToken(writer http.ResponseWriter, reque
 	_ = json.NewEncoder(writer).Encode(map[string]any{
 		"access_token": accessToken, "token_type": "Bearer", "expires_in": 300, "id_token": rawIDToken,
 	})
+}
+
+func TestExchangeInitialLoginPinsSafeAdvertisedAlgorithms(t *testing.T) {
+	t.Parallel()
+
+	harness := newOIDCExchangeHarness(t)
+	defer harness.server.Close()
+	harness.algorithms = `["ES256","HS256","none","ES256"]`
+	provider := harness.discover(t)
+	got, err := provider.exchangeInitialLogin(context.Background(), "unsafe-hs256", harness.material)
+	if err == nil || got != (verifiedIdentityClaims{}) {
+		t.Fatalf("unsafe HS256 token = (%+v, %v), want zero/error", got, err)
+	}
+	got, err = provider.exchangeInitialLogin(context.Background(), "successful-code", harness.material)
+	if err != nil || got.subject != "subject-1" {
+		t.Fatalf("safe ES256 token = (%+v, %v)", got, err)
+	}
 }
 
 func (harness *oidcExchangeHarness) tokenRequestCount(code string) int {

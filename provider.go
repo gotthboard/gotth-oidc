@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -29,6 +30,17 @@ type discoveredOIDCProvider struct {
 	verifier     *oidc.IDTokenVerifier
 	httpClient   *http.Client
 	oauth2Config oauth2.Config
+}
+
+func isHTTPSOrNumericLoopbackHTTP(parsed url.URL) bool {
+	if parsed.Scheme == "https" {
+		return true
+	}
+	if parsed.Scheme != "http" {
+		return false
+	}
+	ip := net.ParseIP(parsed.Hostname())
+	return ip != nil && ip.IsLoopback()
 }
 
 // Format prevents diagnostic formatting from traversing the OAuth2 client
@@ -68,8 +80,8 @@ func discoverOIDCProvider(
 		if err != nil || parsed.Opaque != "" || parsed.Host == "" || parsed.Hostname() == "" || parsed.Path == "" {
 			return url.URL{}, fmt.Errorf("%s is not an absolute hierarchical URL", name)
 		}
-		if parsed.Scheme != "http" && parsed.Scheme != "https" {
-			return url.URL{}, fmt.Errorf("%s must use HTTP or HTTPS", name)
+		if !isHTTPSOrNumericLoopbackHTTP(*parsed) {
+			return url.URL{}, fmt.Errorf("%s must use HTTPS or numeric loopback HTTP", name)
 		}
 		if parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" {
 			return url.URL{}, fmt.Errorf("%s contains credentials, a query, or a fragment", name)
@@ -139,17 +151,20 @@ func discoverOIDCProvider(
 	if _, err := validateURL("OIDC JWKS endpoint", metadata.JWKSURL, true); err != nil {
 		return discoveredOIDCProvider{}, err
 	}
-	supportedAlgorithm := false
+	supportedAlgorithms := make([]string, 0, len(metadata.Algorithms))
 	for _, algorithm := range metadata.Algorithms {
 		switch algorithm {
 		case oidc.RS256, oidc.RS384, oidc.RS512, oidc.ES256, oidc.ES384, oidc.ES512,
 			oidc.PS256, oidc.PS384, oidc.PS512, oidc.EdDSA:
-			supportedAlgorithm = true
+			if !slices.Contains(supportedAlgorithms, algorithm) {
+				supportedAlgorithms = append(supportedAlgorithms, algorithm)
+			}
 		}
 	}
-	if !supportedAlgorithm {
+	if len(supportedAlgorithms) == 0 {
 		return discoveredOIDCProvider{}, fmt.Errorf("OIDC provider advertises no supported ID-token signing algorithm")
 	}
+	slices.Sort(supportedAlgorithms)
 	authStyle := oauth2.AuthStyleInParams
 	if clientSecret != "" {
 		authStyle = oauth2.AuthStyleInHeader
@@ -167,6 +182,6 @@ func discoverOIDCProvider(
 		RedirectURL:  redirectURL,
 		Scopes:       []string{oidc.ScopeOpenID, oidc.ScopeProfile, oidc.ScopeEmail},
 	}
-	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
+	verifier := provider.Verifier(&oidc.Config{ClientID: clientID, SupportedSigningAlgs: supportedAlgorithms})
 	return discoveredOIDCProvider{provider: provider, verifier: verifier, httpClient: client, oauth2Config: oauthConfig}, nil
 }

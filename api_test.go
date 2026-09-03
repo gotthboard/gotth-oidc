@@ -33,7 +33,7 @@ func TestCloneStringDoesNotAlias(t *testing.T) {
 	}
 }
 
-func TestPublicClientCompletesOneHardenedFlow(t *testing.T) {
+func TestConfidentialClientCompletesOneHardenedFlow(t *testing.T) {
 	harness := newOIDCExchangeHarness(t)
 	defer harness.server.Close()
 	client, err := New(context.Background(), Config{
@@ -63,6 +63,36 @@ func TestPublicClientCompletesOneHardenedFlow(t *testing.T) {
 	if identity.Issuer != harness.issuer || identity.Subject != "subject-1" || identity.DisplayName != "Danny Hunn" ||
 		identity.Email == nil || *identity.Email != "danny@example.com" || identity.PictureURL == nil {
 		t.Fatalf("identity = %+v", identity)
+	}
+}
+
+func TestPublicClientCompletesOneHardenedFlow(t *testing.T) {
+	harness := newOIDCExchangeHarness(t)
+	defer harness.server.Close()
+	harness.publicClient = true
+	client, err := New(context.Background(), Config{
+		IssuerURL: harness.issuer, ClientID: "gotth-bb",
+		RedirectURL: "https://forum.example/bb/auth/callback", Transport: harness.server.Client().Transport,
+		Entropy: bytes.NewReader(sequentialBytes(120)),
+	})
+	if err != nil {
+		t.Fatalf("New() returned error: %v", err)
+	}
+	authorization, err := client.Begin()
+	if err != nil {
+		t.Fatalf("Begin() returned error: %v", err)
+	}
+	parsed, err := url.Parse(authorization.URL)
+	if err != nil {
+		t.Fatalf("url.Parse() returned error: %v", err)
+	}
+	state := parsed.Query().Get("state")
+	identity, err := client.Complete(context.Background(), state, "successful-code", authorization.Attempt)
+	if err != nil {
+		t.Fatalf("Complete() returned error: %v", err)
+	}
+	if identity.Subject != "subject-1" || harness.tokenRequestCount("successful-code") != 1 {
+		t.Fatalf("public-client result = (%+v, requests=%d)", identity, harness.tokenRequestCount("successful-code"))
 	}
 }
 
