@@ -11,6 +11,17 @@ validation, bounded redirect-refusing HTTP, verified ID tokens, and protected
 one-time attempt state. The default completion API returns identity only; token
 custody is opt-in.
 
+Canonical Go package: `github.com/gotthboard/gotth-oidc/pkg/oidc`. The
+module root contains repository governance only; new consumers use the
+canonical package.
+
+Repository layout:
+
+- `pkg/oidc/` — public protocol implementation and hostile white-box tests;
+- module root — module metadata and repository governance;
+- `docs/` — standards, runtime, architecture, and admission contracts;
+- `workflow/` — canonical feature state, review, and verification evidence.
+
 The default network policy keeps every discovered endpoint on the issuer
 origin. Conformant split-origin deployments can select a broader HTTPS policy
 or provide an exact allowlist. HTTPS is mandatory outside explicitly enabled

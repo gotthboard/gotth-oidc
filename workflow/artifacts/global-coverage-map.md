@@ -15,6 +15,9 @@
 | Attempt generation/protection/context/recovery | `login_*_test.go`, `api_test.go`, `rfc_negative_test.go`, `fuzz_test.go` |
 | Public and external-consumer API | `api_test.go`, `public_api_test.go` |
 
+Implementation and hostile tests above now live under `pkg/oidc/`; the root
+`public_api_test.go` imports that canonical package.
+
 Statement coverage is 90.1%. Uncovered code is limited to deterministic
 standard-library construction/encoding failures, injected entropy failures,
 broken custom transport/signer/decrypter implementations, and defensive

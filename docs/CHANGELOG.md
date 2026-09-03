@@ -6,9 +6,35 @@ Released sections use Semantic Versioning; unreleased work remains under
 
 ## Unreleased
 
-### 2026-09-03 00:42 CDT — Establish GitHub public distribution
+### 2026-09-03 01:04 CDT — Structure and formally admit the alpha.3 library
 
 Commit: current commit; hash assigned by Git after commit
+
+Affected files:
+
+- `pkg/oidc/`
+- canonical outside-consumer public API test
+- `README.md`, `docs/`, `workflow.toml`, and admission evidence
+
+Explanation:
+
+Move the RFC-complete relying-party implementation and hostile tests out of
+the repository root, leave the root for governance, and add coding-setup
+traceability, runtime, performance, review, and workflow records.
+
+Verification:
+
+- preliminary `go test ./...` passed after the move
+- final module, race, fuzz, clean-clone, graph, and Judge evidence is recorded
+  in the admission workflow evidence
+
+Risks / non-goals:
+
+- no provider, registration, key, token, session, tag, or deployment changed
+
+### 2026-09-03 00:42 CDT — Establish GitHub public distribution
+
+Commit: `3e86750`
 
 Affected files:
 

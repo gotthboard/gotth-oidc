@@ -29,3 +29,12 @@
 5. Prove every advertised capability with hostile fixtures, fuzzing,
    external-consumer compilation, race repetition, clean clones, and a graph
    audit. Record any boundary owned by consumers rather than claiming it.
+
+## Alpha.3 library admission
+
+1. Place the canonical public implementation and hostile tests in `pkg/oidc`.
+2. Keep the module root for governance and prove canonical outside-package
+   compilation.
+3. Add requirement traceability, runtime-boundary, performance, changelog, and
+   workflow admission evidence.
+4. Require two fresh clean Judge passes after all verification gates.

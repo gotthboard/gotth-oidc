@@ -1,5 +1,8 @@
 # Architecture
 
+The canonical public implementation lives in `pkg/oidc`. The module root
+contains no Go package; it owns repository governance only.
+
 One in-process client owns validated provider metadata, endpoint policy, client
 authentication, JOSE capabilities, and a bounded HTTP client. The verifier
 receives only the safe intersection of advertised signing algorithms. Network

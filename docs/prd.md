@@ -32,3 +32,15 @@ Admission requires an explicit standards matrix, external-package API
 compilation, confidential/public and optional-capability end-to-end flows,
 malicious-provider, mix-up, cross-JWT, replay, and cryptographic-tamper tests,
 fuzzing, race repetition, clean-clone verification, and recorded coverage gaps.
+
+## Alpha.3 admission requirements
+
+- `OIDC-A3-01`: New consumers import the documented `pkg/oidc` package.
+- `OIDC-A3-02`: Exactly one public Go package exists; the module root owns no
+  protocol state or Go implementation.
+- `OIDC-A3-03`: Package reorganization does not widen endpoint, token, key,
+  callback, or identity authority.
+- `OIDC-A3-04`: Runtime limits and supported standards remain pinned and
+  boundary-tested.
+- `OIDC-A3-05`: Clean-clone, race, fuzz, external-consumer, graph, and two
+  clean Judge passes gate alpha.3 admission.

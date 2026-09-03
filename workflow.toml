@@ -1,7 +1,7 @@
 schema_version = 1
 project = "gotth-oidc"
 profile = "strict"
-active = "github-distribution"
+active = "alpha3-library-admission"
 
 [settings]
 worktree_root = "worktrees"
@@ -273,4 +273,50 @@ required = true
 timeout_seconds = 300
 side_effect = "external_read"
 network = true
+retries = 0
+
+[feature.alpha3-library-admission]
+id = "alpha3-library-admission"
+slug = "alpha3-library-admission"
+name = "Formally admit the structured alpha.3 library"
+namespace = "oidc"
+parent = ""
+state = "in_progress"
+risk = "critical"
+assurance = "traceable-tests"
+created_at = "2026-09-03T06:04:51Z"
+activated_at = "2026-09-03T06:04:51Z"
+updated_at = "2026-09-03T06:04:51Z"
+folder = "workflow/features/alpha3-library-admission"
+source_path = "pkg/oidc"
+worktree = "/tmp/gotth-oidc-coding-setup"
+branch = "feature/openclaw-coding-setup-admission"
+scope = ["Single canonical public-package layout", "Governance-only module root", "Coding-setup traceability, runtime, performance, review, and evidence"]
+non_goals = ["Change protocol behavior, provider state, credentials, tokens, sessions, users, or authorization", "Tag before consumer admission"]
+affected_files = ["*.go", "pkg/oidc/**", "README.md", "docs/**", "workflow.toml", "workflow/**"]
+invariants = ["Every documented protocol and security boundary remains unchanged", "Default completion returns no token", "No live provider is contacted"]
+acceptance = ["Canonical consumer, module, format, vet, race, fuzz, clean-clone, graph, and two independent Judge gates pass"]
+
+[[feature.alpha3-library-admission.dependency]]
+id = "github-distribution"
+type = "prerequisite"
+state = "satisfied"
+evidence = "workflow/features/github-distribution/evidence/verification.md"
+source_commit = "a042e92fd6fde6798464b8c5d1b833d5a472b0ad"
+satisfied_at = "2026-09-03T06:30:00Z"
+
+[feature.alpha3-library-admission.rollback]
+strategy = "revert_admission_commit"
+notes = "No tag or consumer pin exists; revert the structural admission commit"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.alpha3-library-admission.verification]]
+id = "verify"
+kind = "unit-fuzz"
+command = "make verify plus declared fuzz targets"
+required = true
+timeout_seconds = 1200
+side_effect = "local_write"
+network = false
 retries = 0

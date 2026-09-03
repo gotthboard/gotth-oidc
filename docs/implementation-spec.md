@@ -1,7 +1,8 @@
 # Implementation specification
 
 - Go module: `github.com/gotthboard/gotth-oidc`
-- Root package: `oidc`
+- Canonical package: `github.com/gotthboard/gotth-oidc/pkg/oidc`
+- Module root: no Go package; repository governance only
 - Provider discovery timeout: 10 seconds
 - Maximum OIDC HTTP response: 512 KiB
 - Issuer, callback, and discovered endpoints use HTTPS. Numeric-loopback HTTP
