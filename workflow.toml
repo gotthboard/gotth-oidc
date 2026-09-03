@@ -1,7 +1,7 @@
 schema_version = 1
 project = "gotth-oidc"
 profile = "strict"
-active = "extraction"
+active = "reusable-v0-admission"
 
 [settings]
 worktree_root = "worktrees"
@@ -50,6 +50,58 @@ data_loss_risk = false
 requires_migration_down = false
 
 [[feature.extraction.verification]]
+id = "verify"
+kind = "unit"
+command = "make verify"
+required = true
+timeout_seconds = 600
+side_effect = "local_write"
+network = false
+retries = 0
+
+[feature.reusable-v0-admission]
+id = "reusable-v0-admission"
+slug = "reusable-v0-admission"
+name = "Admit the reusable hardened OIDC contract"
+namespace = "oidc"
+parent = ""
+state = "in_progress"
+risk = "critical"
+assurance = "traceable-tests"
+created_at = "2026-09-03T01:12:54Z"
+activated_at = "2026-09-03T01:12:54Z"
+updated_at = "2026-09-03T01:12:54Z"
+completed_at = ""
+folder = "workflow/features/reusable-v0-admission"
+worktree = "."
+branch = "feature/reusable-v0-admission"
+scope = ["Pin the safe signing-algorithm intersection", "Enforce HTTPS or numeric-loopback HTTP", "Prove the exported consumer API and both client types", "Record clean reusable-release evidence"]
+non_goals = ["Arbitrary OAuth scopes or API access", "Split-origin providers", "Refresh tokens", "Application persistence, users, sessions, roles, routing, or authorization", "Tag before a consumer pin is approved"]
+affected_files = ["README.md", "*.go", "docs/**", "workflow.toml", "workflow/features/reusable-v0-admission/**", "workflow/artifacts/global-coverage-map.md"]
+invariants = ["No OAuth token escapes the package", "All provider requests stay on the exact issuer origin", "State, nonce, and PKCE remain independent", "Consumers atomically consume attempts"]
+acceptance = ["A mixed provider algorithm list cannot expand verifier algorithms", "Non-loopback HTTP URLs fail before network access", "Public and confidential end-to-end flows and external-package compilation pass", "Race-repeated, clean-clone, and graph gates pass"]
+
+[[feature.reusable-v0-admission.dependency]]
+id = "extraction"
+type = "prerequisite"
+state = "satisfied"
+evidence = "workflow/features/extraction/evidence/verification.md"
+satisfied_at = "2026-09-03T01:12:54Z"
+source_commit = "b21f1c2cb8c3ce2e0a9421efa13cd36e0f6c9c3e"
+
+[feature.reusable-v0-admission.rollback]
+strategy = "revert_feature_commit"
+notes = "No tag or consumer pin exists; revert the admission commit"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.reusable-v0-admission.interface]]
+name = "Go library API"
+kind = "api"
+stability = "unstable-unreleased"
+change = "none"
+
+[[feature.reusable-v0-admission.verification]]
 id = "verify"
 kind = "unit"
 command = "make verify"

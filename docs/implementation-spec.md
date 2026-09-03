@@ -4,6 +4,10 @@
 - Root package: `oidc`
 - Provider discovery timeout: 10 seconds
 - Maximum OIDC HTTP response: 512 KiB
+- Issuer, callback, authorization, token, JWKS, and accepted picture URLs use
+  HTTPS; HTTP is accepted only for numeric loopback hosts.
+- The ID-token verifier receives only unique advertised algorithms from the
+  package allowlist: RS256/384/512, ES256/384/512, PS256/384/512, and EdDSA.
 - Maximum authorization code: 4096 bytes
 - Maximum ID token: 64 KiB
 - State, nonce, and PKCE verifier: independent 32-byte values
@@ -11,3 +15,5 @@
 - Accepted identity claims: issuer, subject, name, verified email, safe picture
 - Authorization-shaped claims are not decoded into the public result
 - Callers must atomically consume attempts before calling `Complete`
+- Consumers own attempt expiry, redirect return paths, session creation, and
+  authorization policy.
