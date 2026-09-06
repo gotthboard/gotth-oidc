@@ -11,8 +11,9 @@ Status: complete
   contract migration.
 
 Exact stale-prefix searches found no old module or import identity in Go source,
-`go.mod`, examples, or fixtures. Canonical Forgejo URLs remain only where the
-development, issue, contribution, and security-reporting endpoints are stated.
+`go.mod`, examples, or fixtures. Canonical Forgejo URLs identify only the
+private development source. Public bug and confidential security-reporting
+endpoints are on GitHub.
 
 ## Verification
 
@@ -57,7 +58,7 @@ fresh cold passes before commit. No performance benchmark applies because
 executable paths and data flow are unchanged.
 
 No license was selected. Release tags remain blocked until Danny closes that
-decision gate. GitHub metadata mutation lacks authentication. Forgejo is still
-private, so unauthenticated public contribution and private vulnerability
-reporting remain unresolved. Account conversion and ownership changes were not
-performed.
+decision gate. Forgejo remains private and canonical. GitHub Issues provides
+public bug intake, and GitHub private vulnerability reporting provides
+confidential security intake. Account conversion and ownership changes were
+not performed.

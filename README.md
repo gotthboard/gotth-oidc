@@ -1,7 +1,8 @@
 # gotth-oidc
 
 > **Distribution:** GitHub is the public clone, Go import, and future release endpoint.
-> Forgejo remains canonical development and the issue/contribution location.
+> Forgejo remains canonical development. Report public bugs through GitHub
+> Issues and security vulnerabilities through GitHub private reporting.
 > See [the distribution contract](docs/distribution.md).
 
 
