@@ -19,5 +19,5 @@ canonical on Forgejo; GitHub pull requests are not the canonical contribution
 path. If the Forgejo repository is not accessible to you, public contribution
 intake is limited to GitHub issue discussion.
 
-The repository is licensed under MIT. Contributions are accepted on the basis
-that they may be distributed under that license.
+The repository uses the [MIT License](LICENSE). Contributions are accepted on
+the basis that they may be distributed under that license.
