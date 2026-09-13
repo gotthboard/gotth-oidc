@@ -1,7 +1,7 @@
 schema_version = 1
 project = "gotth-oidc"
 profile = "strict"
-active = "alpha3-library-admission"
+active = "mit-license"
 
 [settings]
 worktree_root = "worktrees"
@@ -320,4 +320,60 @@ required = true
 timeout_seconds = 1200
 side_effect = "local_write"
 network = false
+retries = 0
+
+[feature.mit-license]
+id = "mit-license"
+slug = "mit-license"
+name = "Close the repository license decision gate"
+namespace = "oidc"
+parent = ""
+state = "in_progress"
+risk = "medium"
+assurance = "traceable-tests"
+created_at = "2026-09-13T19:25:00Z"
+activated_at = "2026-09-13T19:25:00Z"
+updated_at = "2026-09-13T19:25:00Z"
+folder = "workflow/features/mit-license"
+source_path = "."
+worktree = "/tank/development/linus/gotth-oidc/worktrees/mit-license"
+branch = "workflow/feature/mit-license"
+scope = ["Add the owner-approved MIT license and close the documented license gate"]
+non_goals = ["Change Go API or runtime behavior", "Create a tag or release", "Reverse mirror direction"]
+affected_files = ["LICENSE", "README.md", "CONTRIBUTING.md", "docs/CHANGELOG.md", "docs/distribution.md", "workflow.toml", "workflow/features/mit-license/**"]
+invariants = ["Forgejo remains canonical development", "GitHub remains the one-way public mirror", "Runtime and public API behavior remain unchanged"]
+acceptance = ["MIT terms are explicit and shipped in source", "Repository verification passes", "Admitted commit has exact Forgejo/GitHub parity"]
+
+[[feature.mit-license.dependency]]
+id = "alpha3-library-admission"
+type = "prerequisite"
+state = "satisfied"
+evidence = "workflow/features/alpha3-library-admission/evidence/verification.md"
+source_commit = "1b84c07808506bbb1e194abc84005739251f66e3"
+satisfied_at = "2026-09-13T19:25:00Z"
+
+[feature.mit-license.rollback]
+strategy = "revert_license_admission_before_release"
+notes = "No tag is created by this feature; revert the admission commit before any dependent release"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.mit-license.verification]]
+id = "verify"
+kind = "unit"
+command = "make verify"
+required = true
+timeout_seconds = 1200
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.mit-license.verification]]
+id = "mirror-parity"
+kind = "integration"
+command = "compare the exact admitted commit at canonical Forgejo and public GitHub"
+required = true
+timeout_seconds = 300
+side_effect = "external_read"
+network = true
 retries = 0

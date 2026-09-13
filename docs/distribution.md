@@ -40,10 +40,11 @@ runtime, database, and tool versions remain the ones stated in the README and
 project verification documents; this distribution change does not widen those
 contracts.
 
-## Licensing gate
+## License
 
-No license file is present. No license has been inferred or selected. New
-release publication remains blocked until the maintainer makes that decision.
+The repository is licensed under the MIT License. The license decision gate is
+closed; release publication still requires every verification and distribution
+step in `docs/RELEASING.md`.
 
 ## Migration traceability
 
@@ -52,5 +53,5 @@ release publication remains blocked until the maintainer makes that decision.
 | DIST-001 | Existing history, tags, worktrees, and mirror direction remain unchanged | pinned ref and worktree inventory |
 | DIST-002 | Module directive, exact self-imports, fixtures, and examples use the GitHub identity | stale-prefix search, tidy, vet, test, and clean public import |
 | DIST-003/004 | README, contribution, security, changelog, and release contracts describe public use and support | documentation audit |
-| DIST-006 | Missing license is stated as a decision gate | license inventory |
+| DIST-006 | MIT license is explicit and included in distributed source | license inventory and exact-text audit |
 | DIST-008 | Forgejo remains source and GitHub remains the one-way mirror target | push-mirror configuration and exact ref comparison |

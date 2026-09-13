@@ -75,7 +75,8 @@ before the first admitted release:
 go get github.com/gotthboard/gotth-oidc@main
 ```
 
-The repository has no selected license and no long-term support promise.
+The repository is licensed under the [MIT License](LICENSE). The pre-1.0 API
+has no long-term compatibility or support promise.
 Versioning, release admission, security reporting, and contribution details are
 in [the release policy](docs/RELEASING.md), [security policy](SECURITY.md), and
 [contribution guide](CONTRIBUTING.md).

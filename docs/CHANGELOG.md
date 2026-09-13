@@ -6,6 +6,34 @@ Released sections use Semantic Versioning; unreleased work remains under
 
 ## Unreleased
 
+### 2026-09-13 — Select the MIT license
+
+Affected files:
+
+- `LICENSE`
+- `README.md`
+- `CONTRIBUTING.md`
+- `docs/distribution.md`
+- `docs/CHANGELOG.md`
+- `workflow.toml`
+- `workflow/features/mit-license/`
+
+Explanation:
+
+Close the explicit legal decision gate by licensing the repository under MIT.
+This changes distribution rights, not the Go API or runtime behavior.
+
+Verification:
+
+- canonical MIT text and copyright notice audit
+- repository verification suite
+- exact Forgejo/GitHub commit parity after admission
+
+Risks / non-goals:
+
+- no API, runtime behavior, dependency, tag, release, or deployment changes
+- the first immutable release remains a separate admission step
+
 ### 2026-09-06 00:54 CDT — Route vulnerability reports through GitHub
 
 Commit: current commit; hash assigned by Git after commit
