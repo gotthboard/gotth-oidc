@@ -1,6 +1,6 @@
 # MIT License Verification
 
-Status: ready for admission
+Status: complete
 
 The owner selected MIT on 2026-09-13. The bounded implementation commit is
 `a02b50471eaeec00fe0b5f28ea3ed0a785c1b846`.
@@ -16,5 +16,7 @@ The owner selected MIT on 2026-09-13. The bounded implementation commit is
 - Review accepted the change with the constraint that it create no tag or
   release.
 
-The remaining admission gate is exact Forgejo/GitHub parity after merge. The
-first immutable version tag and GitHub release remain separate release work.
+Forgejo PR #1 merged fast-forward-only to `main` at
+`0e325e32fc0c7f699087575f150834d62b8924ad`. Public GitHub `main` resolved the
+same exact object after the existing one-way mirror ran. No tag or release was
+created; those remain separate release work.
