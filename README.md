@@ -60,19 +60,16 @@ and decide authorization. Authentication transport termination, callback
 routing, provider registration policy, and protected-resource business clients
 also remain consumer responsibilities.
 
-See `docs/conformance.md` for the standards and capability matrix. The module
-remains untagged until a real consumer pins its first compatibility contract.
+See `docs/conformance.md` for the standards and capability matrix. GOTTH Mail
+is the first admitted consumer of the `v0.1.0` compatibility contract.
 
 ## Installation, compatibility, and support
 
-Unreleased. The Go API is pre-1.0; the exact supported standards surface is
-recorded in `docs/conformance.md`.
-
-No post-migration version has been tagged. To inspect the current source
-before the first admitted release:
+The current release is `v0.1.0`. The Go API remains pre-1.0; the exact
+supported standards surface is recorded in `docs/conformance.md`.
 
 ```sh
-go get github.com/gotthboard/gotth-oidc@main
+go get github.com/gotthboard/gotth-oidc@v0.1.0
 ```
 
 The repository is licensed under the [MIT License](LICENSE). The pre-1.0 API

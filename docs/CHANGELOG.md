@@ -6,6 +6,35 @@ Released sections use Semantic Versioning; unreleased work remains under
 
 ## Unreleased
 
+## v0.1.0 — 2026-09-21
+
+Release source: `1ae119e52f8efc3392fcc9fa716b1b27c9ffce6c`
+
+First immutable public release of the hardened OIDC/OAuth relying-party
+library. The release preserves the admitted pre-1.0 API and standards surface;
+it does not add runtime behavior over the release source commit.
+
+Compatibility effect:
+
+- establishes `v0.1.0` as the first supported module pin
+- keeps the API explicitly unstable until `v1.0.0`
+- makes no promise for application accounts, sessions, authorization, provider
+  registration, token retention, or protected-resource business clients
+
+Verification:
+
+- format and read-only module checks
+- vet, race tests, and 90.1% statement coverage
+- clean external-consumer import
+- live GOTTH Mail OIDC login and scoped-role binding
+- exact Forgejo/GitHub commit and annotated-tag parity
+
+Known limitations:
+
+- consumers own durable attempt state, users, sessions, authorization, and
+  retained-key protection
+- no long-term compatibility promise exists before `v1.0.0`
+
 ### 2026-09-13 — Select the MIT license
 
 Affected files:

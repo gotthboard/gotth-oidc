@@ -4,7 +4,7 @@
 
 - Canonical development source:
   <https://git.dannyhunn.com/gotthboard/gotth-oidc>
-- Public clone, Go import, and future releases:
+- Public clone, Go import, and releases:
   <https://github.com/gotthboard/gotth-oidc>
 - Public bug tracker:
   <https://github.com/gotthboard/gotth-oidc/issues>
@@ -17,23 +17,22 @@ endpoints.
 
 ## Maturity and compatibility
 
-Current status: unreleased Go library with an unstable pre-1.0 API.
+Current status: `v0.1.0`, an unstable pre-1.0 Go library release.
 
-## Current source use
+## Current release use
 
-No post-migration version has been tagged. Until one is admitted, source users
-must select the moving `main` branch explicitly:
+Consumers must pin the admitted release rather than the moving `main` branch:
 
 ```sh
-go get github.com/gotthboard/gotth-oidc@main
+go get github.com/gotthboard/gotth-oidc@v0.1.0
 ```
 
 ```go
 import gotthoidc "github.com/gotthboard/gotth-oidc"
 ```
 
-A Go command records a pseudo-version in the consumer's `go.mod`; review that
-exact revision. Do not mistake `@main` for a compatibility promise.
+A Go command records the exact module version in the consumer's `go.mod`.
+Source snapshots and `@main` are not compatibility promises.
 
 The repository pins Go 1.26.6 where a Go module exists. Supported protocol,
 runtime, database, and tool versions remain the ones stated in the README and
