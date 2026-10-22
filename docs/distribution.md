@@ -28,7 +28,7 @@ go get github.com/gotthboard/gotth-oidc@v0.1.0
 ```
 
 ```go
-import gotthoidc "github.com/gotthboard/gotth-oidc"
+import gotthoidc "github.com/gotthboard/gotth-oidc/pkg/oidc"
 ```
 
 A Go command records the exact module version in the consumer's `go.mod`.

@@ -29,3 +29,22 @@ Forgejo remains the development source of truth. GitHub is the public clone,
 Go import, and release-distribution endpoint. Failure of mirror or release
 publication blocks the release; it does not authorize reversing mirror
 direction or publishing a different commit.
+
+## Read-only release closeout
+
+The tag fallback URL exists, but the authoritative GitHub release-by-tag API
+currently reports no published Release; draft state is unknown without authentication:
+
+```sh
+EXPECT_STATE=incomplete sh scripts/release-closeout-check.sh
+```
+
+After creating or publishing the normal Release on that immutable tag and uploading the
+source archive plus `SHA256SUMS`, require exact metadata and asset bytes:
+
+```sh
+EXPECT_STATE=complete sh scripts/release-closeout-check.sh
+```
+
+The check requires `git`, `curl`, `python3`, and `sha256sum`. A mismatch
+never authorizes moving the tag or replacing tagged source.
