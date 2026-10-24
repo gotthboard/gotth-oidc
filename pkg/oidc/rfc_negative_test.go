@@ -100,6 +100,8 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?response=j&code=", nil),
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error_description=x", nil),
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?code=c&state=s&iss=", nil),
+		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error=denied&error_description=", nil),
+		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error=denied&error_uri=", nil),
 	}
 	unreadBody := &trackingReadCloser{}
 	earlyMixed := &http.Request{
@@ -108,11 +110,18 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		Body:   unreadBody, ContentLength: int64(len("code=c&state=s")),
 	}
 	requests = append(requests, earlyMixed)
-	for _, body := range []string{"response=j&code=", "state=s&error_description=x", "code=c&state=s&iss="} {
+	for _, body := range []string{"response=j&code=", "state=s&error_description=x", "code=c&state=s&iss=", "state=s&error=denied&error_description=", "state=s&error=denied&error_uri="} {
 		request := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader(body))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		requests = append(requests, request)
 	}
+	preparsed := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader("code=c&state="+strings.Repeat("x", maxAuthorizationResponseBytes+1)))
+	preparsed.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	preparsed.ContentLength = -1
+	if err := preparsed.ParseForm(); err != nil {
+		t.Fatal(err)
+	}
+	requests = append(requests, preparsed)
 	badType := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader("code=c&state=s"))
 	badType.Header.Set("Content-Type", "application/json")
 	requests = append(requests, badType)
@@ -432,6 +441,11 @@ func TestJARMRejectsInvalidClaims(t *testing.T) {
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "c", "state": "s", "error": ""},
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "", "state": "s", "error": "denied"},
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "state": "", "error": "denied"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": nil, "exp": now.Add(time.Minute).Unix(), "code": "c", "state": "s"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "state": "s", "error": "denied", "error_description": nil},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "state": "s", "error": "denied", "error_uri": nil},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "state": "s", "error": "denied", "error_description": ""},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "state": "s", "error": "denied", "error_uri": ""},
 	} {
 		raw, signErr := jwt.Signed(signer).Claims(claims).Serialize()
 		if signErr != nil {

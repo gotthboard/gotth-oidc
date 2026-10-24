@@ -128,7 +128,27 @@ func (provider discoveredOIDCProvider) verifyAuthorizationResponseJWT(ctx contex
 	if err := json.Unmarshal(payload, &rawClaims); err != nil || rawClaims == nil {
 		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT claims are invalid")
 	}
-	if err := json.Unmarshal(payload, &claims); err != nil || claims.Issuer != provider.issuer || len(claims.Audience) != 1 || claims.Audience[0] != provider.oauth2Config.ClientID || claims.ExpiresAt <= now.Unix() || claims.ExpiresAt > now.Add(10*time.Minute).Unix() || claims.IssuedAt > now.Add(time.Minute).Unix() {
+	for _, name := range []string{"iss", "code", "state", "error", "error_description", "error_uri"} {
+		raw, present := rawClaims[name]
+		if !present {
+			continue
+		}
+		var value string
+		if strings.TrimSpace(string(raw)) == "null" || json.Unmarshal(raw, &value) != nil {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT claim type is invalid")
+		}
+	}
+	for _, name := range []string{"iat", "exp"} {
+		raw, present := rawClaims[name]
+		var value int64
+		if !present || strings.TrimSpace(string(raw)) == "null" || json.Unmarshal(raw, &value) != nil {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT time claim is invalid")
+		}
+	}
+	if rawAudience, present := rawClaims["aud"]; !present || strings.TrimSpace(string(rawAudience)) == "null" {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT audience is invalid")
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil || claims.Issuer != provider.issuer || len(claims.Audience) != 1 || claims.Audience[0] != provider.oauth2Config.ClientID || claims.ExpiresAt <= now.Unix() || claims.ExpiresAt > now.Add(10*time.Minute).Unix() || claims.IssuedAt <= 0 || claims.IssuedAt > now.Add(time.Minute).Unix() {
 		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT claims are invalid")
 	}
 	if err := validateAuthorizationResponseValue("code", claims.Code, maxAuthorizationResponseBytes, true); err != nil {
@@ -147,6 +167,12 @@ func (provider discoveredOIDCProvider) verifyAuthorizationResponseJWT(ctx contex
 	_, hasErrorURI := rawClaims["error_uri"]
 	if !hasError && (hasErrorDescription || hasErrorURI) {
 		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT error details omit error")
+	}
+	if hasErrorDescription && claims.Description == "" {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT error description is empty")
+	}
+	if hasErrorURI && claims.ErrorURI == "" {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT error URI is empty")
 	}
 	response := AuthorizationResponse{Code: claims.Code, State: claims.State, Issuer: claims.Issuer}
 	if hasError {

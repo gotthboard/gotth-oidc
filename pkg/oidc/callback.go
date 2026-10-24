@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"net/url"
@@ -86,11 +87,14 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 		if err != nil || mediaType != "application/x-www-form-urlencoded" {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback content type is invalid")
 		}
-		request.Body = http.MaxBytesReader(nil, request.Body, maxAuthorizationResponseBytes)
-		if err := request.ParseForm(); err != nil {
+		body, err := io.ReadAll(io.LimitReader(request.Body, maxAuthorizationResponseBytes+1))
+		if err != nil || len(body) > maxAuthorizationResponseBytes {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC callback form is invalid or oversized")
+		}
+		values, err = url.ParseQuery(string(body))
+		if err != nil {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback form is invalid")
 		}
-		values = request.PostForm
 	default:
 		return AuthorizationResponse{}, fmt.Errorf("OIDC callback method is unsupported")
 	}
@@ -113,6 +117,12 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 	}
 	if _, hasIssuer := values["iss"]; hasIssuer && values.Get("iss") == "" {
 		return AuthorizationResponse{}, fmt.Errorf("OIDC callback issuer is empty")
+	}
+	if _, present := values["error_description"]; present && values.Get("error_description") == "" {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC callback error description is empty")
+	}
+	if _, present := values["error_uri"]; present && values.Get("error_uri") == "" {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC callback error URI is empty")
 	}
 	mode := ResponseModeQuery
 	if request.Method == http.MethodPost {
