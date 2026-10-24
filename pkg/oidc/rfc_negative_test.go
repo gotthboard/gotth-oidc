@@ -99,6 +99,7 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		{Method: http.MethodGet, URL: &url.URL{RawQuery: "code=c&state=s&ignored=%zz"}},
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?response=j&code=", nil),
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error_description=x", nil),
+		httptest.NewRequest(http.MethodGet, "https://client.example/cb?code=c&state=s&iss=", nil),
 	}
 	unreadBody := &trackingReadCloser{}
 	earlyMixed := &http.Request{
@@ -107,7 +108,7 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		Body:   unreadBody, ContentLength: int64(len("code=c&state=s")),
 	}
 	requests = append(requests, earlyMixed)
-	for _, body := range []string{"response=j&code=", "state=s&error_description=x"} {
+	for _, body := range []string{"response=j&code=", "state=s&error_description=x", "code=c&state=s&iss="} {
 		request := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader(body))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		requests = append(requests, request)
@@ -426,6 +427,11 @@ func TestJARMRejectsInvalidClaims(t *testing.T) {
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "error": "bad\nerror", "state": "s"},
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "error": "denied", "error_description": strings.Repeat("x", 4097), "state": "s"},
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "error": "denied", "error_uri": strings.Repeat("x", 2049), "state": "s"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "c", "state": "s", "error_description": "orphan"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "c", "state": "s", "error_uri": "https://issuer.example/error"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "c", "state": "s", "error": ""},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "", "state": "s", "error": "denied"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "state": "", "error": "denied"},
 	} {
 		raw, signErr := jwt.Signed(signer).Claims(claims).Serialize()
 		if signErr != nil {

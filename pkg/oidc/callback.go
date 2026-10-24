@@ -111,6 +111,9 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 	if err := validateAuthorizationErrorFields(values.Get("error"), values.Get("error_description"), values.Get("error_uri")); err != nil {
 		return AuthorizationResponse{}, err
 	}
+	if _, hasIssuer := values["iss"]; hasIssuer && values.Get("iss") == "" {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC callback issuer is empty")
+	}
 	mode := ResponseModeQuery
 	if request.Method == http.MethodPost {
 		mode = ResponseModeFormPost

@@ -124,6 +124,10 @@ func (provider discoveredOIDCProvider) verifyAuthorizationResponseJWT(ctx contex
 		Description string        `json:"error_description"`
 		ErrorURI    string        `json:"error_uri"`
 	}
+	var rawClaims map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &rawClaims); err != nil || rawClaims == nil {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT claims are invalid")
+	}
 	if err := json.Unmarshal(payload, &claims); err != nil || claims.Issuer != provider.issuer || len(claims.Audience) != 1 || claims.Audience[0] != provider.oauth2Config.ClientID || claims.ExpiresAt <= now.Unix() || claims.ExpiresAt > now.Add(10*time.Minute).Unix() || claims.IssuedAt > now.Add(time.Minute).Unix() {
 		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT claims are invalid")
 	}
@@ -136,10 +140,18 @@ func (provider discoveredOIDCProvider) verifyAuthorizationResponseJWT(ctx contex
 	if err := validateAuthorizationErrorFields(claims.Error, claims.Description, claims.ErrorURI); err != nil {
 		return AuthorizationResponse{}, err
 	}
+	_, hasCode := rawClaims["code"]
+	_, hasState := rawClaims["state"]
+	_, hasError := rawClaims["error"]
+	_, hasErrorDescription := rawClaims["error_description"]
+	_, hasErrorURI := rawClaims["error_uri"]
+	if !hasError && (hasErrorDescription || hasErrorURI) {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT error details omit error")
+	}
 	response := AuthorizationResponse{Code: claims.Code, State: claims.State, Issuer: claims.Issuer}
-	if claims.Error != "" {
-		if claims.Code != "" {
-			return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT combines success and error")
+	if hasError {
+		if claims.Error == "" || hasCode || !hasState || claims.State == "" {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT error shape is invalid")
 		}
 		response.Error = &AuthorizationError{Code: claims.Error, Description: claims.Description, URI: claims.ErrorURI}
 		return response, nil
