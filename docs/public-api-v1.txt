@@ -84,8 +84,9 @@ type Client struct {
     strict issuer checking, bounded HTTP, and no retained OAuth tokens.
 
 func New(ctx context.Context, config Config) (*Client, error)
-    New discovers and validates the configured provider. All discovered network
-    endpoints must remain on the configured issuer origin.
+    New discovers and validates the configured provider. Every discovered
+    network endpoint must satisfy Config.EndpointPolicy; a nil policy uses the
+    immutable same-origin default.
 
 func (client *Client) Begin() (Authorization, error)
     Begin creates independent state, nonce, and PKCE material and returns

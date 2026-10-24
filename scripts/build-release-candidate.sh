@@ -28,18 +28,34 @@ cd "$root"
 commit=$(git rev-parse --verify "$ref^{commit}")
 script_at_ref=$(mktemp)
 tmp=$(mktemp -d)
-trap 'rm -f "$script_at_ref"; rm -rf "$tmp"' EXIT HUP INT TERM
-stem="gotth-oidc-$version"
-output=$(readlink -m -- "$output")
-case "$output/" in
-  "$root/"*) echo "OUTPUT_DIR must be outside the source repository" >&2; exit 2 ;;
-esac
-mkdir -p "$output"
+stage=
+cleanup() {
+  rm -f "$script_at_ref"
+  rm -rf "$tmp"
+  if [ -n "$stage" ]; then rm -rf "$stage"; fi
+}
+trap cleanup EXIT HUP INT TERM
 git show "$commit:scripts/build-release-candidate.sh" >"$script_at_ref"
 if ! cmp -s "$script_at_ref" scripts/build-release-candidate.sh; then
   echo "builder differs from the selected commit" >&2
   exit 1
 fi
+if [ -e "$output" ] || [ -L "$output" ]; then
+  echo "OUTPUT_DIR must not already exist" >&2
+  exit 2
+fi
+final_output=$(readlink -m -- "$output")
+case "$final_output/" in
+  "$root/"*) echo "OUTPUT_DIR must be outside the source repository" >&2; exit 2 ;;
+esac
+output_parent=$(dirname -- "$final_output")
+if [ ! -d "$output_parent" ]; then
+  echo "OUTPUT_DIR parent must already exist" >&2
+  exit 2
+fi
+stage=$(mktemp -d "$output_parent/.gotth-oidc-release.XXXXXX")
+output=$stage
+stem="gotth-oidc-$version"
 archive="$output/$stem-source.tar.gz"
 sbom="$output/$stem.spdx.json"
 license_evidence="$output/$stem.LICENSE-EVIDENCE.txt"
@@ -163,4 +179,10 @@ PY
   sha256sum -c "$(basename "$checksums")"
 )
 printf '%s\n' "$commit" >"$output/CANDIDATE_COMMIT"
-printf 'release candidate built at %s for %s\n' "$output" "$commit"
+mv -T --no-clobber -- "$stage" "$final_output"
+if [ -e "$stage" ]; then
+  echo "OUTPUT_DIR appeared while the release set was being built" >&2
+  exit 1
+fi
+stage=
+printf 'release candidate built at %s for %s\n' "$final_output" "$commit"

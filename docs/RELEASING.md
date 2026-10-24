@@ -55,14 +55,16 @@ v1 stabilizes only the existing `pkg/oidc` contract. Protocol expansion,
 consumer migrations, tagging, pushing, hosted Release creation, and deployment
 are separate outcomes.
 
-From an exact committed candidate, build the source release set outside the
-repository:
+From an exact committed candidate, build the source release set into a
+nonexistent destination whose parent already exists outside the repository:
 
     scripts/build-release-candidate.sh v1.0.0 OUTPUT_DIR COMMIT
     (cd OUTPUT_DIR && sha256sum -c SHA256SUMS)
 
-The builder verifies a byte-identical second source-archive build and requires
-its own bytes to match the selected commit. Its deterministic provenance is an
+The builder verifies its own bytes against the selected commit before creating
+any output, stages the complete set privately, verifies a byte-identical second
+source-archive build, and renames the finished set into place without merging or
+overwriting. Its deterministic provenance is an
 unsigned local statement, not a trusted-platform or signer claim; the exact
 semantics are in `docs/release-build-type-v1.md`. The release set consists of the
 source archive, SPDX 2.3 SBOM, license evidence, in-toto/SLSA provenance, and

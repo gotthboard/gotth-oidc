@@ -92,8 +92,9 @@ type Client struct {
 	requireResponseIssuer bool
 }
 
-// New discovers and validates the configured provider. All discovered network
-// endpoints must remain on the configured issuer origin.
+// New discovers and validates the configured provider. Every discovered network
+// endpoint must satisfy Config.EndpointPolicy; a nil policy uses the immutable
+// same-origin default.
 func New(ctx context.Context, config Config) (*Client, error) {
 	issuer, err := url.Parse(config.IssuerURL)
 	if err != nil {

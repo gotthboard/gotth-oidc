@@ -3,17 +3,28 @@ set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 builder="$root/scripts/build-release-candidate.sh"
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 sh -n "$builder"
 
 for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01; do
-  if "$builder" "$invalid" /tmp/gotth-oidc-invalid-release-version HEAD >/dev/null 2>&1; then
+  if "$builder" "$invalid" "$tmp/invalid" HEAD >/dev/null 2>&1; then
     echo "release builder accepted invalid version: $invalid" >&2
     exit 1
   fi
 done
 
+if "$builder" v1.0.0 "$tmp/bad-ref" refs/heads/does-not-exist >/dev/null 2>&1; then
+  echo "release builder accepted an invalid ref" >&2
+  exit 1
+fi
+if [ -e "$tmp/bad-ref" ]; then
+  echo "release builder created output before validating its ref" >&2
+  exit 1
+fi
+
 probe="$root/.release-output-probe"
-if [ -e "$probe" ]; then
+if [ -e "$probe" ] || [ -L "$probe" ]; then
   echo "release output probe path already exists: $probe" >&2
   exit 1
 fi
@@ -25,8 +36,39 @@ case "$output" in
   *"OUTPUT_DIR must be outside the source repository"*) ;;
   *) echo "release builder rejected in-tree output for the wrong reason: $output" >&2; exit 1 ;;
 esac
-if [ -e "$probe" ]; then
+if [ -e "$probe" ] || [ -L "$probe" ]; then
   echo "release builder mutated the repository before rejecting its output path" >&2
+  exit 1
+fi
+
+mkdir "$tmp/existing"
+printf 'preserve me\n' >"$tmp/existing/stale"
+if "$builder" v1.0.0 "$tmp/existing" HEAD >/dev/null 2>&1; then
+  echo "release builder accepted an existing output directory" >&2
+  exit 1
+fi
+test "$(find "$tmp/existing" -mindepth 1 -maxdepth 1 -printf '%f\n')" = stale
+ln -s existing "$tmp/symlink"
+if "$builder" v1.0.0 "$tmp/symlink" HEAD >/dev/null 2>&1; then
+  echo "release builder accepted a symlink output path" >&2
+  exit 1
+fi
+
+"$builder" v1.0.0 "$tmp/release" HEAD >/dev/null
+(
+  cd "$tmp/release"
+  sha256sum -c SHA256SUMS >/dev/null
+  test "$(cat CANDIDATE_COMMIT)" = "$(git -C "$root" rev-parse HEAD)"
+)
+before=$(find "$tmp/release" -type f -print0 | sort -z | xargs -0 sha256sum)
+if "$builder" v1.0.0 "$tmp/release" HEAD >/dev/null 2>&1; then
+  echo "release builder overwrote an existing release set" >&2
+  exit 1
+fi
+after=$(find "$tmp/release" -type f -print0 | sort -z | xargs -0 sha256sum)
+test "$before" = "$after"
+if find "$tmp" -mindepth 1 -maxdepth 1 -name '.gotth-oidc-release.*' | grep -q .; then
+  echo "release builder left a staging directory behind" >&2
   exit 1
 fi
 

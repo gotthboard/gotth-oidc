@@ -6,7 +6,10 @@ The `scripts/build-release-candidate.sh` build type accepts an exact Git commit
 and SemVer release name. It creates a deterministic `git archive` source
 archive, SPDX 2.3 SBOM, MIT license evidence, an unsigned in-toto statement with
 a SLSA provenance v1 predicate, and `SHA256SUMS`. It builds the source archive
-twice and rejects unequal bytes.
+twice and rejects unequal bytes. The destination must not exist; the builder
+validates its selected ref and its own committed bytes, writes only to a private
+staging directory, and atomically renames the complete set into place. Failures
+remove staging state instead of merging with or overwriting prior evidence.
 
 External parameters are `version` and `ref`. The resolved dependency is the
 canonical Forgejo Git commit. The output subjects are the custom source archive,
