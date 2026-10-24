@@ -58,13 +58,13 @@ are separate outcomes.
 From an exact committed candidate, build the source release set outside the
 repository:
 
-`@sh
-scripts/build-release-candidate.sh v1.0.0 OUTPUT_DIR COMMIT
-(cd OUTPUT_DIR && sha256sum -c SHA256SUMS)
-`@
+    scripts/build-release-candidate.sh v1.0.0 OUTPUT_DIR COMMIT
+    (cd OUTPUT_DIR && sha256sum -c SHA256SUMS)
 
 The builder verifies a byte-identical second source-archive build and requires
-its own bytes to match the selected commit. The release set consists of the
+its own bytes to match the selected commit. Its deterministic provenance is an
+unsigned local statement, not a trusted-platform or signer claim; the exact
+semantics are in `docs/release-build-type-v1.md`. The release set consists of the
 source archive, SPDX 2.3 SBOM, license evidence, in-toto/SLSA provenance, and
 `SHA256SUMS`. The source archive must contain the repository MIT `LICENSE`.
 Generated evidence is candidate-bound and must not be committed back into the

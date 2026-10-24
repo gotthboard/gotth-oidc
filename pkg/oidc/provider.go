@@ -131,10 +131,7 @@ func discoverOIDCProviderWithConfig(ctx context.Context, baseTransport http.Roun
 	if err != nil {
 		return discoveredOIDCProvider{}, err
 	}
-	policy := config.EndpointPolicy
-	if policy == nil {
-		policy = SameOriginEndpoints
-	}
+	policy := effectiveEndpointPolicy(config.EndpointPolicy)
 	if baseTransport == nil {
 		baseTransport = http.DefaultTransport
 	}

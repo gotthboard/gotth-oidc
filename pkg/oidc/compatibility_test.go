@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -102,5 +103,26 @@ func TestProtectedAttemptEnvelopeVersionPolicy(t *testing.T) {
 	badContext[0]++
 	if _, err := openAttemptContext(fixture.State, fixture.Attempt.StateHash, badContext); err == nil {
 		t.Fatal("unknown attempt-context envelope version accepted")
+	}
+}
+
+func TestZeroValueEndpointPolicyCannotBeReassignedByImporter(t *testing.T) {
+	original := SameOriginEndpoints
+	SameOriginEndpoints = EndpointPolicyFunc(func(_ EndpointKind, _, _ *url.URL) error { return nil })
+	t.Cleanup(func() { SameOriginEndpoints = original })
+
+	issuer, err := url.Parse("https://issuer.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	crossOrigin, err := url.Parse("https://attacker.example/token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := effectiveEndpointPolicy(nil).AllowEndpoint(EndpointToken, issuer, crossOrigin); err == nil {
+		t.Fatal("reassigned SameOriginEndpoints weakened the zero-value Config default")
+	}
+	if err := effectiveEndpointPolicy(SameOriginEndpoints).AllowEndpoint(EndpointToken, issuer, crossOrigin); err != nil {
+		t.Fatalf("explicit reassigned policy was not honored: %v", err)
 	}
 }

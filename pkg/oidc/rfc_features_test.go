@@ -149,7 +149,7 @@ func TestCallbackParserHandlesQueryFormErrorsAndRejectsAmbiguity(t *testing.T) {
 	}
 	errorRequest := httptest.NewRequest(http.MethodGet, "https://client.example/cb?error=access_denied&state=s&error_description=no", nil)
 	parsed, err = ParseCallback(errorRequest)
-	if err != nil || parsed.Error == nil || parsed.Error.Error() != "OIDC authorization failed: access_denied" {
+	if err != nil || parsed.Error == nil || parsed.Error.Code != "access_denied" || parsed.Error.Description != "no" {
 		t.Fatalf("error callback = (%+v, %v)", parsed, err)
 	}
 	for _, raw := range []string{

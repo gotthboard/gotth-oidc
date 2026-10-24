@@ -9,10 +9,19 @@ version=$1
 output=$2
 ref=HEAD
 if [ "$#" -eq 3 ]; then ref=$3; fi
-case "$version" in
-  v[0-9]*.[0-9]*.[0-9]*) ;;
-  *) echo "VERSION must use vMAJOR.MINOR.PATCH" >&2; exit 2 ;;
-esac
+if ! python3 - "$version" <<'PY'
+import re, sys
+match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", sys.argv[1])
+if match is None:
+    raise SystemExit(1)
+prerelease = match.group(4)
+if prerelease and any(part.isdigit() and len(part) > 1 and part.startswith("0") for part in prerelease.split(".")):
+    raise SystemExit(1)
+PY
+then
+  echo "VERSION must be valid SemVer with a v prefix" >&2
+  exit 2
+fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
@@ -20,15 +29,17 @@ commit=$(git rev-parse --verify "$ref^{commit}")
 script_at_ref=$(mktemp)
 tmp=$(mktemp -d)
 trap 'rm -f "$script_at_ref"; rm -rf "$tmp"' EXIT HUP INT TERM
+stem="gotth-oidc-$version"
+output=$(readlink -m -- "$output")
+case "$output/" in
+  "$root/"*) echo "OUTPUT_DIR must be outside the source repository" >&2; exit 2 ;;
+esac
+mkdir -p "$output"
 git show "$commit:scripts/build-release-candidate.sh" >"$script_at_ref"
 if ! cmp -s "$script_at_ref" scripts/build-release-candidate.sh; then
   echo "builder differs from the selected commit" >&2
   exit 1
 fi
-
-stem="gotth-oidc-$version"
-mkdir -p "$output"
-output=$(CDPATH= cd -- "$output" && pwd)
 archive="$output/$stem-source.tar.gz"
 sbom="$output/$stem.spdx.json"
 license_evidence="$output/$stem.LICENSE-EVIDENCE.txt"
@@ -51,6 +62,8 @@ commit_epoch=$(git show -s --format=%ct "$commit")
 commit_time=$(date -u -d "@$commit_epoch" +%Y-%m-%dT%H:%M:%SZ)
 source_sha=$(sha256sum "$archive" | awk '{print $1}')
 license_sha=$(sha256sum "$tmp/LICENSE" | awk '{print $1}')
+license_copyright=$(sed -n '/^Copyright /{p;q;}' "$tmp/LICENSE")
+script_sha=$(sha256sum "$script_at_ref" | awk '{print $1}')
 archive_license="$stem/LICENSE"
 tar -tzf "$archive" | grep -Fqx "$archive_license"
 cat >"$license_evidence" <<EOT
@@ -66,22 +79,21 @@ archive_contains_license=true
 EOT
 license_evidence_sha=$(sha256sum "$license_evidence" | awk '{print $1}')
 
-python3 - "$version" "$commit" "$commit_time" "$source_sha" "$license_sha" "$tmp/go-mod.json" "$sbom" <<'PY'
+python3 - "$version" "$commit" "$commit_time" "$source_sha" "$license_sha" "$license_copyright" "$tmp/go-mod.json" "$sbom" <<'PY'
 import json, pathlib, sys
-version, commit, created, source_sha, license_sha, gomod_path, output = sys.argv[1:]
+version, commit, created, source_sha, license_sha, copyright_text, gomod_path, output = sys.argv[1:]
 data = json.loads(pathlib.Path(gomod_path).read_text())
 module = data["Module"]["Path"]
 packages = [{
     "SPDXID": "SPDXRef-Package-gotth-oidc",
     "name": module,
     "versionInfo": version,
-    "downloadLocation": f"https://github.com/gotthboard/gotth-oidc/archive/refs/tags/{version}.tar.gz",
+    "downloadLocation": "NOASSERTION",
     "filesAnalyzed": False,
     "licenseConcluded": "MIT",
     "licenseDeclared": "MIT",
-    "copyrightText": "Copyright (c) 2026 Linus",
+    "copyrightText": copyright_text,
     "checksums": [{"algorithm": "SHA256", "checksumValue": source_sha}],
-    "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": f"pkg:golang/{module}@{version}"}],
 }]
 relationships = []
 for index, requirement in enumerate(sorted(data.get("Require") or [], key=lambda item: (item["Path"], item["Version"]))):
@@ -115,9 +127,9 @@ pathlib.Path(output).write_text(json.dumps(document, indent=2, sort_keys=True) +
 PY
 sbom_sha=$(sha256sum "$sbom" | awk '{print $1}')
 
-python3 - "$version" "$commit" "$commit_time" "$source_sha" "$sbom_sha" "$license_evidence_sha" "$provenance" <<'PY'
+python3 - "$version" "$commit" "$source_sha" "$sbom_sha" "$license_evidence_sha" "$script_sha" "$provenance" <<'PY'
 import json, pathlib, sys
-version, commit, created, source_sha, sbom_sha, license_sha, output = sys.argv[1:]
+version, commit, source_sha, sbom_sha, license_sha, script_sha, output = sys.argv[1:]
 stem = f"gotth-oidc-{version}"
 statement = {
     "_type": "https://in-toto.io/Statement/v1",
@@ -129,14 +141,16 @@ statement = {
     "predicateType": "https://slsa.dev/provenance/v1",
     "predicate": {
         "buildDefinition": {
-            "buildType": "https://github.com/gotthboard/gotth-oidc/release/source-archive/v1",
+            "buildType": f"https://github.com/gotthboard/gotth-oidc/blob/{commit}/docs/release-build-type-v1.md#build-type",
             "externalParameters": {"version": version, "ref": commit},
             "internalParameters": {},
             "resolvedDependencies": [{"uri": "git+https://git.dannyhunn.com/gotthboard/gotth-oidc", "digest": {"gitCommit": commit}}],
         },
         "runDetails": {
-            "builder": {"id": "https://github.com/gotthboard/gotth-oidc/blob/main/scripts/build-release-candidate.sh"},
-            "metadata": {"invocationId": f"git:{commit}", "startedOn": created, "finishedOn": created},
+            "builder": {
+                "id": f"https://github.com/gotthboard/gotth-oidc/blob/{commit}/docs/release-build-type-v1.md#local-builder",
+                "version": {"scripts/build-release-candidate.sh": script_sha},
+            },
         },
     },
 }

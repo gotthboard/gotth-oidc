@@ -44,15 +44,27 @@ func (policy EndpointPolicyFunc) AllowEndpoint(kind EndpointKind, issuer, endpoi
 	return policy(kind, issuer, endpoint)
 }
 
-// SameOriginEndpoints is the conservative default. Standards-compatible
-// deployments using separate endpoint hosts must choose HTTPSAnyOriginEndpoints
-// or provide a narrower allowlist policy.
-var SameOriginEndpoints EndpointPolicy = EndpointPolicyFunc(func(_ EndpointKind, issuer, endpoint *url.URL) error {
+func allowSameOriginEndpoint(_ EndpointKind, issuer, endpoint *url.URL) error {
 	if issuer == nil || endpoint == nil || !strings.EqualFold(issuer.Scheme, endpoint.Scheme) || !strings.EqualFold(issuer.Host, endpoint.Host) {
 		return fmt.Errorf("OIDC endpoint escapes the configured issuer origin")
 	}
 	return nil
-})
+}
+
+func effectiveEndpointPolicy(configured EndpointPolicy) EndpointPolicy {
+	if configured != nil {
+		return configured
+	}
+	// Do not read the exported compatibility variable here. Importers may assign
+	// it, but the security-sensitive zero-value default must remain immutable.
+	return EndpointPolicyFunc(allowSameOriginEndpoint)
+}
+
+// SameOriginEndpoints is the conservative same-origin policy. Standards-compatible
+// deployments using separate endpoint hosts must choose HTTPSAnyOriginEndpoints
+// or provide a narrower allowlist policy. Assigning this compatibility variable
+// does not alter the immutable zero-value Config default.
+var SameOriginEndpoints EndpointPolicy = EndpointPolicyFunc(allowSameOriginEndpoint)
 
 // HTTPSAnyOriginEndpoints admits any syntactically valid HTTPS endpoint. It is
 // standards-compatible but too broad for consumers that do not trust provider

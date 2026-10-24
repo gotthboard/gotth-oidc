@@ -1,5 +1,10 @@
 # v1 Release Preparation
 
+## Status
+
+Candidate source is ready for exact-commit verification and cold review. It is
+not release-admitted, published, or active in the manifest.
+
 Stabilize the existing advertised `pkg/oidc` package as v1.0.0 without adding
 protocol scope.
 

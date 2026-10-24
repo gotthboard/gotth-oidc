@@ -10,7 +10,10 @@ capability. The exact exported declaration set is checked in at
 Within v1, exported functions, methods, interfaces, constants, struct field
 names and types, and their documented semantics follow Go 1 compatibility.
 Additive API remains possible only when it does not weaken existing security or
-change zero-value behavior. Application accounts, sessions, cookies,
+change zero-value behavior. The nil `Config.EndpointPolicy` default is an
+immutable same-origin policy; reassigning the exported `SameOriginEndpoints`
+compatibility variable affects only callers that explicitly pass that value.
+Application accounts, sessions, cookies,
 authorization policy, durable storage, provider operation, implicit flow,
 hybrid flow, and protected-resource business clients remain outside this
 module.

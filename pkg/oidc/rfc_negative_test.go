@@ -97,7 +97,9 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		}
 	}
 	var nilAuthorizationError *AuthorizationError
-	if nilAuthorizationError.Error() == "" || (&AuthorizationError{}).Error() == "" {
+	nilMessage := nilAuthorizationError.Error()
+	emptyMessage := (&AuthorizationError{}).Error()
+	if len(nilMessage) == 0 || len(emptyMessage) == 0 {
 		t.Fatal("empty authorization errors must remain printable")
 	}
 	untrusted := &AuthorizationError{Code: "access_denied", Description: "<script>secret</script>", URI: "javascript:secret"}
@@ -319,11 +321,14 @@ func TestJOSEAndEndpointHelperFailures(t *testing.T) {
 	if validDPoPNonce("") || validDPoPNonce("bad nonce") || validDPoPNonce(strings.Repeat("x", 4097)) || !validDPoPNonce("nonce") {
 		t.Fatal("DPoP nonce validation is incorrect")
 	}
-	if got := (endpointError{}).Error(); got != "OIDC endpoint request failed" {
-		t.Fatalf("empty endpoint error = %q", got)
+	emptyEndpointMessage := (endpointError{}).Error()
+	codedEndpoint := endpointError{Code: "invalid_request", Description: "untrusted detail"}
+	codedEndpointMessage := codedEndpoint.Error()
+	if len(emptyEndpointMessage) == 0 || len(codedEndpointMessage) == 0 {
+		t.Fatal("endpoint errors must remain printable")
 	}
-	if got := (endpointError{Code: "invalid_request"}).Error(); got != "OIDC endpoint request failed: invalid_request" {
-		t.Fatalf("coded endpoint error = %q", got)
+	if strings.Contains(codedEndpointMessage, codedEndpoint.Description) {
+		t.Fatal("endpoint error diagnostic exposed untrusted description")
 	}
 	var nilClient *Client
 	if nilClient.CheckSessionIframe() != "" {

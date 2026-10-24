@@ -12,7 +12,8 @@ This candidate freezes the existing advertised `pkg/oidc` surface without
 adding protocol scope. It adds a checked public-API baseline, makes
 `AuthorizationError` inspection the typed error contract while leaving message
 text noncontractual, and proves that v0.1.0 `ProtectedAttempt` values remain
-readable across all three authenticated envelopes.
+readable across all three authenticated envelopes. It also prevents reassignment
+of the exported same-origin policy value from weakening the nil-policy default.
 
 Release engineering now produces a deterministic source archive, SPDX 2.3
 SBOM, license evidence, in-toto/SLSA provenance, and checksum manifest from one
