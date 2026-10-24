@@ -197,7 +197,10 @@ func (client *Client) complete(ctx context.Context, response AuthorizationRespon
 	if ctx == nil {
 		return Completion{}, fmt.Errorf("OIDC completion context is required")
 	}
-	if response.Error != nil && (response.Code != "" || response.ResponseJWT != "") {
+	if response.ResponseJWT != "" && (response.Code != "" || response.State != "" || response.Issuer != "" || response.Error != nil) {
+		return Completion{}, fmt.Errorf("OIDC authorization response combines JWT and direct fields")
+	}
+	if response.Error != nil && response.Code != "" {
 		return Completion{}, fmt.Errorf("OIDC authorization response combines success and error")
 	}
 	state := response.State
@@ -215,6 +218,10 @@ func (client *Client) complete(ctx context.Context, response AuthorizationRespon
 	material, err := recoverLoginMaterial(state, attempt.StateHash[:], attempt.NonceCiphertext[:], attempt.PKCEVerifierCiphertext[:])
 	if err != nil {
 		return Completion{}, err
+	}
+	maximumContextEnvelopeBytes := 1 + attemptContextMaxBytes + loginGCMTagBytes
+	if len(attempt.ContextCiphertext) > base64.RawURLEncoding.EncodedLen(maximumContextEnvelopeBytes) {
+		return Completion{}, fmt.Errorf("OIDC attempt context encoding is invalid")
 	}
 	contextEnvelope, decodeErr := base64.RawURLEncoding.Strict().DecodeString(attempt.ContextCiphertext)
 	if decodeErr != nil {

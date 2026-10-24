@@ -58,19 +58,26 @@ case "$final_output/" in
   "$root/"*) echo "OUTPUT_DIR must be outside the source repository" >&2; exit 2 ;;
   "$git_common_dir/"*) echo "OUTPUT_DIR must be outside the repository Git directory" >&2; exit 2 ;;
 esac
-while IFS= read -r worktree_line; do
-  case "$worktree_line" in
-    "worktree "*)
-      worktree_path=$(printf '%s\n' "$worktree_line" | sed 's/^worktree //')
-      worktree_root=$(readlink -m -- "$worktree_path")
-      case "$final_output/" in
-        "$worktree_root/"*) echo "OUTPUT_DIR must be outside every registered worktree" >&2; exit 2 ;;
-      esac
-      ;;
-  esac
-done <<EOT
-$(git worktree list --porcelain)
-EOT
+worktree_list="$tmp/worktrees.porcelain"
+git worktree list --porcelain -z >"$worktree_list"
+if ! python3 -I - "$final_output" "$worktree_list" <<'PY'
+import os, pathlib, sys
+output = os.path.realpath(sys.argv[1])
+fields = pathlib.Path(sys.argv[2]).read_bytes().split(b"\0")
+for field in fields:
+    if not field.startswith(b"worktree "):
+        continue
+    root = os.path.realpath(os.fsdecode(field[len(b"worktree "):]))
+    try:
+        if os.path.commonpath((output, root)) == root:
+            raise SystemExit(1)
+    except ValueError:
+        continue
+PY
+then
+  echo "OUTPUT_DIR must be outside every registered worktree" >&2
+  exit 2
+fi
 output_parent=$(dirname -- "$final_output")
 if [ ! -d "$output_parent" ]; then
   echo "OUTPUT_DIR parent must already exist" >&2

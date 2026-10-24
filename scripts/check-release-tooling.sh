@@ -75,7 +75,7 @@ if "$builder" v1.0.0 "$git_probe" "$candidate" >/dev/null 2>&1; then
   exit 1
 fi
 test ! -e "$git_probe"
-sibling="$tmp/sibling-worktree"
+sibling=$(printf '%s\n%s' "$tmp/sibling-worktree" "newline")
 git -C "$root" worktree add --quiet --detach "$sibling" "$candidate"
 sibling_probe="$sibling/.release-output-probe"
 if "$builder" v1.0.0 "$sibling_probe" "$candidate" >/dev/null 2>&1; then

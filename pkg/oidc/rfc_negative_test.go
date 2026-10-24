@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -533,10 +534,25 @@ func TestCompletionRejectsAttemptAndResponseMismatches(t *testing.T) {
 		return authorization, parsed.Query().Get("state")
 	}
 	authorization, state := begin()
+	for _, response := range []AuthorizationResponse{
+		{ResponseJWT: "a.b.c", Code: "code", Mode: ResponseModeQuery},
+		{ResponseJWT: "a.b.c", State: "state", Mode: ResponseModeQuery},
+		{ResponseJWT: "a.b.c", Issuer: client.provider.issuer, Mode: ResponseModeQuery},
+		{ResponseJWT: "a.b.c", Error: &AuthorizationError{Code: "denied"}, Mode: ResponseModeQuery},
+	} {
+		if _, err := client.CompleteResponse(context.Background(), response, authorization.Attempt); err == nil {
+			t.Fatalf("mixed JWT/direct response accepted: %+v", response)
+		}
+	}
 	badEncoding := authorization.Attempt
 	badEncoding.ContextCiphertext = "!"
 	if _, err := client.Complete(context.Background(), state, "successful-code", badEncoding); err == nil {
 		t.Fatal("invalid attempt context encoding accepted")
+	}
+	oversizedEncoding := authorization.Attempt
+	oversizedEncoding.ContextCiphertext = strings.Repeat("A", base64.RawURLEncoding.EncodedLen(1+attemptContextMaxBytes+loginGCMTagBytes)+1)
+	if _, err := client.Complete(context.Background(), state, "successful-code", oversizedEncoding); err == nil {
+		t.Fatal("oversized attempt context encoding accepted")
 	}
 	authorization, state = begin()
 	if _, err := client.CompleteResponse(context.Background(), AuthorizationResponse{State: state, Code: "successful-code", Mode: ResponseModeFormPost}, authorization.Attempt); err == nil {
