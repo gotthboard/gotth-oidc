@@ -15,8 +15,9 @@ text noncontractual, and proves that v0.1.0 `ProtectedAttempt` values remain
 readable across all three authenticated envelopes. It also prevents reassignment
 of the exported same-origin policy value from weakening the nil-policy default,
 rejects uninitialized completion clients or nil completion contexts before JARM
-processing, bounds custom-decrypter output, and validates signed authorization
-error fields before they reach diagnostics.
+processing, bounds custom-decrypter output, validates signed authorization
+error fields before they reach diagnostics, and rejects malformed callback query
+encoding instead of silently dropping it.
 
 Release engineering now produces a deterministic source archive, SPDX 2.3
 SBOM, license evidence, in-toto/SLSA provenance, and checksum manifest from one

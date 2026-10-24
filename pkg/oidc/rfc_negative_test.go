@@ -84,6 +84,7 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&code=a%0A", nil),
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&response=j&code=c", nil),
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error=denied&code=c", nil),
+		{Method: http.MethodGet, URL: &url.URL{RawQuery: "code=c&state=s&ignored=%zz"}},
 	}
 	badType := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader("code=c&state=s"))
 	badType.Header.Set("Content-Type", "application/json")

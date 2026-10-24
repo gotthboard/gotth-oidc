@@ -69,7 +69,11 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 		if len(request.URL.RawQuery) > maxAuthorizationResponseBytes {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback query is oversized")
 		}
-		values = request.URL.Query()
+		parsed, err := url.ParseQuery(request.URL.RawQuery)
+		if err != nil {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC callback query is invalid")
+		}
+		values = parsed
 		// Query is also the carrier for the plain `jwt` response mode.
 	case http.MethodPost:
 		if request.Body == nil || request.ContentLength > maxAuthorizationResponseBytes {
