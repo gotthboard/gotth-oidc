@@ -2,8 +2,9 @@
 
 ## Status
 
-Candidate source is ready for exact-commit verification and cold review. It is
-not release-admitted, published, or active in the manifest.
+Candidate implementation, exact-commit verification, deterministic artifacts,
+and two cold reviews are complete. Canonical Forgejo publication is authorized;
+GitHub hosted publication remains Bryce's separate handoff.
 
 Stabilize the existing advertised `pkg/oidc` package as v1.0.0 without adding
 protocol scope.
@@ -24,9 +25,8 @@ protocol scope.
 
 ## Boundaries
 
-This preparation does not push, tag, create a hosted Release, alter providers,
-or migrate a consumer. The existing `v0.1.0-release` feature remains the
-manifest's active feature because its hosted GitHub Release closeout is still
-incomplete. This v1 feature may be prepared and reviewed, but canonical release
-advancement remains blocked until that workflow-state conflict is resolved by
-an authorized closeout decision.
+This release does not alter providers or migrate a consumer. The historical
+`v0.1.0-release` hosted-GitHub closeout remains blocked pending Bryce and is
+not the manifest's active feature. It does not block verified v1.0.0 Forgejo
+publication. Automatic mirror propagation is allowed; manual GitHub Release and
+asset publication remain out of scope.

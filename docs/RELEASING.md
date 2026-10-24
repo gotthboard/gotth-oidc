@@ -19,20 +19,23 @@ For an admitted release:
    verification, and known limitations.
 4. Create and push a new annotated tag on canonical Forgejo. Never move or
    replace an existing tag.
-5. Verify exact head and tag parity at
-   `github.com/gotthboard/gotth-oidc` through the existing one-way push
-   mirror.
-6. Build any artifacts from the exact public GitHub clone, publish checksums,
-   and create the GitHub release for that already-mirrored tag.
+5. Verify the exact Forgejo branch, annotated tag object, peeled commit,
+   stable hosted Release, and downloaded asset bytes. The existing one-way
+   mirror may propagate refs automatically; do not disable it.
+6. Hand the exact Forgejo release identity, notes, assets, checksums, and
+   verification record to Bryce for GitHub hosted-release publication and
+   independent public-distribution verification.
 
 The committed changelog must not attempt to name its own commit. Record the exact
 peeled release commit in the annotated tag, hosted Release, provenance, and
 candidate-bound external evidence.
 
-Forgejo remains the development source of truth. GitHub is the public clone,
-Go import, and release-distribution endpoint. Failure of mirror or release
-publication blocks the release; it does not authorize reversing mirror
-direction or publishing a different commit.
+Forgejo remains the development source of truth. A verified stable Forgejo
+Release completes this repository's canonical publication. GitHub remains the
+public clone and Go import/distribution endpoint, but its hosted Release and
+asset publication are Bryce's separate handoff and do not block the authorized
+Forgejo publication. Mirror or GitHub failure never authorizes reversing mirror
+direction, moving a tag, or publishing different bytes.
 
 ## Read-only release closeout
 

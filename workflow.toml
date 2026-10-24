@@ -1,7 +1,7 @@
 schema_version = 1
 project = "gotth-oidc"
 profile = "strict"
-active = "v0.1.0-release"
+active = "v1-release"
 
 [settings]
 worktree_root = "worktrees"
@@ -385,7 +385,7 @@ slug = "v0.1.0-release"
 name = "Publish the first immutable OIDC library release"
 namespace = "oidc"
 parent = ""
-state = "active"
+state = "blocked"
 risk = "critical"
 assurance = "traceable-tests"
 created_at = "2026-09-21T23:20:00Z"
@@ -461,20 +461,21 @@ slug = "v1-release"
 name = "Stabilize the existing OIDC package as v1"
 namespace = "oidc"
 parent = ""
-state = "ready"
+state = "done"
 risk = "critical"
 assurance = "traceable-tests"
 created_at = "2026-10-24T13:38:00Z"
 activated_at = "2026-10-24T13:38:00Z"
-updated_at = "2026-10-24T15:31:07Z"
+updated_at = "2026-10-24T16:15:00Z"
+completed_at = "2026-10-24T16:15:00Z"
 folder = "workflow/features/v1-release"
 source_path = "pkg/oidc"
 worktree = "/home/linus/.openclaw/workspace/.artifacts/worktrees/gotth-oidc-v1-release"
 branch = "workflow/feature/v1-release"
-scope = ["Freeze the existing exported pkg/oidc contract", "Preserve v0.1.0 ProtectedAttempt values across v1", "Prepare deterministic v1.0.0 source release evidence"]
-non_goals = ["Add or remove protocol capabilities", "Add application users, sessions, cookies, persistence, routing, or authorization", "Push, tag, create a hosted Release, or migrate a consumer"]
+scope = ["Freeze the existing exported pkg/oidc contract", "Preserve v0.1.0 ProtectedAttempt values across v1", "Produce deterministic v1.0.0 evidence and publish the verified Forgejo release"]
+non_goals = ["Add or remove protocol capabilities", "Add application users, sessions, cookies, persistence, routing, or authorization", "Migrate a consumer", "Create or upload GitHub hosted-release assets"]
 affected_files = ["Makefile", "README.md", "SECURITY.md", "pkg/oidc/**", "docs/**", "scripts/**", "workflow.toml", "workflow.events.jsonl", "workflow/features/v1-release/**"]
-invariants = ["All v0.1.0 advertised protocol behavior and security boundaries remain unchanged", "v0.1.0 in-flight ProtectedAttempt values remain readable", "AuthorizationError remains inspectable", "Other error strings remain noncontractual", "No publication side effect occurs"]
+invariants = ["All v0.1.0 advertised protocol behavior and security boundaries remain unchanged", "v0.1.0 in-flight ProtectedAttempt values remain readable", "AuthorizationError remains inspectable", "Other error strings remain noncontractual", "Publication changes only canonical release refs/objects/assets and does not mutate providers or consumers"]
 acceptance = ["Public API snapshot is exact", "Cross-version golden covers JSON persistence and all three envelopes", "Focused, race, repeat, fuzz, clean-clone, external-consumer, release-artifact, and two cold review gates pass on one exact commit"]
 
 [[feature.v1-release.dependency]]
@@ -486,8 +487,8 @@ satisfied_at = "2026-10-24T13:38:00Z"
 source_commit = "1ae119e52f8efc3392fcc9fa716b1b27c9ffce6c"
 
 [feature.v1-release.rollback]
-strategy = "delete_unpublished_branch_or_revert_candidate_commits"
-notes = "No v1 tag or publication exists; v0.1.0 remains immutable and published"
+strategy = "preserve_immutable_tag_publish_successor_for_defects"
+notes = "Preserve immutable v0.1.0 and v1.0.0 tags; defects require a successor release"
 data_loss_risk = false
 requires_migration_down = false
 
