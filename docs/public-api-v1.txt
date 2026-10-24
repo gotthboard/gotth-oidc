@@ -1,0 +1,406 @@
+package oidc // import "github.com/gotthboard/gotth-oidc/pkg/oidc"
+
+Package oidc implements a hardened, storage-neutral OpenID Connect relying party
+for Authorization Code flows with PKCE.
+
+FUNCTIONS
+
+func DeleteClientRegistration(ctx context.Context, registration ClientRegistration, transport http.RoundTripper) error
+    DeleteClientRegistration deletes a dynamically registered client.
+
+func DiscoverIssuer(ctx context.Context, config IssuerDiscoveryConfig) (string, error)
+    DiscoverIssuer performs bounded WebFinger issuer discovery and returns one
+    exact issuer URL. It does not create a Client or register one.
+
+func ReadClientRegistration(ctx context.Context, registration ClientRegistration, transport http.RoundTripper) (json.RawMessage, error)
+    ReadClientRegistration retrieves the current registration metadata.
+
+func UpdateClientRegistration(ctx context.Context, registration ClientRegistration, metadata json.RawMessage, transport http.RoundTripper) (json.RawMessage, error)
+    UpdateClientRegistration replaces registration metadata and returns the
+    server's complete updated representation.
+
+
+TYPES
+
+type Authorization struct {
+	URL     string
+	Attempt ProtectedAttempt
+}
+    Authorization contains the browser URL and opaque server-side state for one
+    Authorization Code flow.
+
+type AuthorizationError struct {
+	Code        string
+	Description string
+	URI         string
+}
+    AuthorizationError is an inspectable OAuth authorization error. Callers may
+    use errors.As and inspect Code, Description, and URI. Description and URI
+    are bounded untrusted display material, never trusted HTML or instructions.
+    Error message text is diagnostic and is not a compatibility contract.
+
+func (err *AuthorizationError) Error() string
+
+type AuthorizationOptions struct {
+	Scopes           []string
+	Prompt           []string
+	MaxAge           *time.Duration
+	ACRValues        []string
+	LoginHint        string
+	IDTokenHint      string
+	UILocales        []string
+	ClaimsLocales    []string
+	Claims           json.RawMessage
+	ResponseMode     ResponseMode
+	UseUserInfo      bool
+	RequireName      bool
+	RequireEmail     bool
+	OfflineAccess    bool
+	UsePAR           bool
+	UseRequestObject bool
+}
+    AuthorizationOptions are bounded optional OpenID Connect request parameters.
+    Zero values select the interoperable Authorization Code default.
+
+type AuthorizationResponse struct {
+	Code        string
+	State       string
+	Issuer      string
+	ResponseJWT string
+	Error       *AuthorizationError
+	Mode        ResponseMode
+}
+    AuthorizationResponse is a parsed query, form-post, or JWT authorization
+    response. Duplicate and mixed encodings are rejected by ParseCallback.
+
+func ParseCallback(request *http.Request) (AuthorizationResponse, error)
+    ParseCallback parses a bounded OIDC authorization response from GET query or
+    POST application/x-www-form-urlencoded input. It performs no token exchange.
+
+type Client struct {
+	// Has unexported fields.
+}
+    Client performs a hardened Authorization Code flow with PKCE, state, nonce,
+    strict issuer checking, bounded HTTP, and no retained OAuth tokens.
+
+func New(ctx context.Context, config Config) (*Client, error)
+    New discovers and validates the configured provider. All discovered network
+    endpoints must remain on the configured issuer origin.
+
+func (client *Client) Begin() (Authorization, error)
+    Begin creates independent state, nonce, and PKCE material and returns
+    the authorization URL plus the representation that must be persisted
+    server-side.
+
+func (client *Client) BeginContext(ctx context.Context, options AuthorizationOptions) (Authorization, error)
+    BeginContext creates an authorization request with bounded optional OpenID
+    Connect parameters. Network I/O occurs only when PAR is selected.
+
+func (client *Client) CheckSessionIframe() string
+    CheckSessionIframe returns the validated OpenID Connect Session Management
+    iframe endpoint when the provider advertises one.
+
+func (client *Client) Complete(ctx context.Context, state, code string, attempt ProtectedAttempt) (Identity, error)
+    Complete recovers a persisted one-time attempt, exchanges the authorization
+    code, verifies the ID token, and returns only admitted identity claims. The
+    caller remains responsible for atomically consuming the attempt before use.
+
+func (client *Client) CompleteResponse(ctx context.Context, response AuthorizationResponse, attempt ProtectedAttempt) (Identity, error)
+    CompleteResponse validates a parsed authorization response against its
+    authenticated attempt and returns identity without returning OAuth tokens.
+
+func (client *Client) CompleteTokens(ctx context.Context, response AuthorizationResponse, attempt ProtectedAttempt) (Completion, error)
+    CompleteTokens is the explicit token-bearing completion path. The default
+    Complete and CompleteResponse methods never return OAuth tokens.
+
+func (client *Client) DPoPProof(ctx context.Context, method, targetURI, accessToken, nonce string) (string, error)
+    DPoPProof creates a proof for a protected-resource request. The configured
+    signer must embed its public JWK. Nonce storage/retry policy remains with
+    the HTTP client that owns the protected-resource request.
+
+func (client *Client) EndSessionURL(request LogoutRequest) (string, error)
+    EndSessionURL constructs a validated RP-initiated logout URL.
+
+func (client Client) Format(state fmt.State, _ rune)
+    Format prevents diagnostic formatting from traversing provider secrets.
+
+func (client *Client) ParseFrontChannelLogout(request *http.Request) (FrontChannelLogout, error)
+
+func (client *Client) Refresh(ctx context.Context, request RefreshRequest) (TokenSet, error)
+    Refresh exchanges an explicitly retained refresh token. It never performs
+    storage and returns a complete replacement token set for atomic rotation.
+
+func (client *Client) Revoke(ctx context.Context, token, tokenTypeHint string) error
+    Revoke revokes one access or refresh token when the provider advertises RFC
+    7009. Empty token-type hints are allowed; other hints are bounded.
+
+func (client *Client) VerifyBackChannelLogout(ctx context.Context, raw string) (LogoutToken, error)
+    VerifyBackChannelLogout verifies a purpose-bound Back-Channel Logout token.
+    Replay detection for JWTID remains caller-owned persistent state.
+
+type ClientAuthentication struct {
+	Method ClientAuthenticationMethod
+	Signer JWTSigner
+}
+    ClientAuthentication configures explicit token/PAR endpoint authentication.
+    Signer is required for JWT methods. TLS methods require an mTLS-capable
+    Transport and discovered mutual-TLS endpoint aliases.
+
+type ClientAuthenticationMethod string
+    ClientAuthenticationMethod is the token-endpoint authentication method.
+
+const (
+	ClientAuthNone          ClientAuthenticationMethod = "none"
+	ClientSecretBasic       ClientAuthenticationMethod = "client_secret_basic"
+	ClientSecretPost        ClientAuthenticationMethod = "client_secret_post"
+	ClientSecretJWT         ClientAuthenticationMethod = "client_secret_jwt"
+	PrivateKeyJWT           ClientAuthenticationMethod = "private_key_jwt"
+	TLSClientAuth           ClientAuthenticationMethod = "tls_client_auth"
+	SelfSignedTLSClientAuth ClientAuthenticationMethod = "self_signed_tls_client_auth"
+)
+type ClientRegistration struct {
+	ClientID                string
+	ClientSecret            string
+	ClientIDIssuedAt        time.Time
+	ClientSecretExpiresAt   time.Time
+	RegistrationAccessToken string
+	RegistrationClientURI   string
+	Metadata                json.RawMessage
+}
+    ClientRegistration contains registration credentials. Formatting is always
+    redacted because the client secret and registration access token are bearer
+    credentials.
+
+func RegisterClient(ctx context.Context, config RegistrationConfig) (ClientRegistration, error)
+    RegisterClient performs one bounded dynamic registration request.
+
+func (registration ClientRegistration) Format(state fmt.State, _ rune)
+
+type Completion struct {
+	Identity Identity
+	Tokens   TokenSet
+}
+    Completion combines verified identity with explicitly requested tokens.
+
+type Config struct {
+	IssuerURL                          string
+	ClientID                           string
+	ClientSecret                       string
+	RedirectURL                        string
+	Transport                          http.RoundTripper
+	Entropy                            io.Reader
+	Clock                              func() time.Time
+	EndpointPolicy                     EndpointPolicy
+	AllowInsecureLoopback              bool
+	TrustedAudiences                   []string
+	IdentityPolicy                     IdentityPolicy
+	RequireAuthorizationResponseIssuer bool
+	ClientAuthentication               ClientAuthentication
+	RequestObjectSigner                JWTSigner
+	TokenDecrypter                     JWTDecrypter
+	EnableJARM                         bool
+	EnablePAR                          bool
+	EnableMutualTLS                    bool
+	DPoPSigner                         JWTSigner
+}
+    Config defines one exact OIDC relying-party binding.
+
+type DPoPKeyThumbprinter interface {
+	DPoPKeyThumbprint(ctx context.Context) (string, error)
+}
+    DPoPKeyThumbprinter exposes the RFC 7638 thumbprint of the public key used
+    for DPoP. DPoP signers must implement it so authorization codes can be bound
+    with dpop_jkt before the token request.
+
+type EndpointKind string
+    EndpointKind identifies one discovered network endpoint. Policies must make
+    an independent decision for every endpoint; discovery is not an SSRF waiver.
+
+const (
+	EndpointAuthorization EndpointKind = "authorization"
+	EndpointToken         EndpointKind = "token"
+	EndpointJWKS          EndpointKind = "jwks"
+	EndpointUserInfo      EndpointKind = "userinfo"
+	EndpointPAR           EndpointKind = "pushed_authorization_request"
+	EndpointRegistration  EndpointKind = "registration"
+	EndpointLogout        EndpointKind = "end_session"
+	EndpointSession       EndpointKind = "check_session"
+	EndpointRevocation    EndpointKind = "revocation"
+)
+type EndpointPolicy interface {
+	AllowEndpoint(kind EndpointKind, issuer, endpoint *url.URL) error
+}
+    EndpointPolicy decides whether a discovered endpoint may be contacted.
+    Implementations must be deterministic and must not perform network I/O.
+
+var HTTPSAnyOriginEndpoints EndpointPolicy = EndpointPolicyFunc(func(_ EndpointKind, _ *url.URL, endpoint *url.URL) error {
+	if endpoint == nil || !strings.EqualFold(endpoint.Scheme, "https") {
+		return fmt.Errorf("OIDC endpoint must use HTTPS")
+	}
+	return nil
+})
+    HTTPSAnyOriginEndpoints admits any syntactically valid HTTPS endpoint.
+    It is standards-compatible but too broad for consumers that do not trust
+    provider metadata to select outbound destinations.
+
+var SameOriginEndpoints EndpointPolicy = EndpointPolicyFunc(func(_ EndpointKind, issuer, endpoint *url.URL) error {
+	if issuer == nil || endpoint == nil || !strings.EqualFold(issuer.Scheme, endpoint.Scheme) || !strings.EqualFold(issuer.Host, endpoint.Host) {
+		return fmt.Errorf("OIDC endpoint escapes the configured issuer origin")
+	}
+	return nil
+})
+    SameOriginEndpoints is the conservative default. Standards-compatible
+    deployments using separate endpoint hosts must choose
+    HTTPSAnyOriginEndpoints or provide a narrower allowlist policy.
+
+type EndpointPolicyFunc func(kind EndpointKind, issuer, endpoint *url.URL) error
+    EndpointPolicyFunc adapts a function to EndpointPolicy.
+
+func (policy EndpointPolicyFunc) AllowEndpoint(kind EndpointKind, issuer, endpoint *url.URL) error
+
+type FrontChannelLogout struct {
+	Issuer    string
+	SessionID string
+}
+    FrontChannelLogout identifies a validated front-channel logout notification.
+
+type Identity struct {
+	Issuer      string
+	Subject     string
+	DisplayName string
+	Email       *string
+	PictureURL  *string
+}
+    Identity is the provider-neutral identity admitted from a verified ID token.
+    It deliberately excludes authorization-shaped claims.
+
+type IdentityPolicy struct {
+	UseUserInfo          bool
+	RequireDisplayName   bool
+	RequireVerifiedEmail bool
+}
+    IdentityPolicy determines which optional profile facts are fetched and
+    required. Issuer and subject are always required.
+
+type IssuerDiscoveryConfig struct {
+	Resource              string
+	Transport             http.RoundTripper
+	AllowInsecureLoopback bool
+}
+    IssuerDiscoveryConfig controls optional OpenID Provider issuer discovery via
+    WebFinger. Resource may be an acct URI, e-mail address, HTTPS URL, or host.
+
+type JOSEDecrypter struct {
+	Key                any
+	KeyAlgorithms      []jose.KeyAlgorithm
+	ContentEncryptions []jose.ContentEncryption
+}
+    JOSEDecrypter is the built-in compact-JWE decrypter. The algorithm lists are
+    mandatory allowlists; accepting an algorithm merely because a key supports
+    it is forbidden.
+
+func (decrypter JOSEDecrypter) DecryptJWT(ctx context.Context, compactJWE string) (string, error)
+
+type JOSESigner struct {
+	SignatureAlgorithm jose.SignatureAlgorithm
+	Key                any
+	KeyID              string
+	EmbedPublicJWK     bool
+}
+    JOSESigner is the built-in compact-JWS signer. Key remains caller-owned.
+    EmbedPublicJWK is required for DPoP and should be false for other JWTs.
+
+func (signer JOSESigner) Algorithm() string
+
+func (signer JOSESigner) DPoPKeyThumbprint(ctx context.Context) (string, error)
+    DPoPKeyThumbprint returns the base64url RFC 7638 SHA-256 thumbprint of the
+    signer's public key.
+
+func (signer JOSESigner) SignJWT(ctx context.Context, typ string, claims json.RawMessage) (string, error)
+
+type JWTDecrypter interface {
+	DecryptJWT(ctx context.Context, compactJWE string) (string, error)
+}
+    JWTDecrypter unwraps one compact JWE and returns the nested compact signed
+    JWT. Implementations must enforce their own key-management algorithm and
+    content-encryption allowlists.
+
+type JWTSigner interface {
+	Algorithm() string
+	SignJWT(ctx context.Context, typ string, claims json.RawMessage) (string, error)
+}
+    JWTSigner signs one bounded JSON claims object for request objects, client
+    assertions, DPoP proofs, or other purpose-specific JWTs. The caller owns the
+    signing key and its rotation.
+
+type LogoutRequest struct {
+	IDTokenHint           string
+	LogoutHint            string
+	ClientID              string
+	PostLogoutRedirectURI string
+	State                 string
+	UILocales             []string
+}
+    LogoutRequest configures an RP-initiated logout URL.
+
+type LogoutToken struct {
+	Issuer    string
+	Subject   string
+	SessionID string
+	JWTID     string
+	IssuedAt  time.Time
+}
+    LogoutToken identifies the session or subject named by a verified
+    Back-Channel Logout token.
+
+type ProtectedAttempt struct {
+	StateHash              [sha256.Size]byte
+	NonceCiphertext        [protectedSecretBytes]byte
+	PKCEVerifierCiphertext [protectedSecretBytes]byte
+	ContextCiphertext      string
+}
+    ProtectedAttempt is the storage-safe representation of one authorization
+    attempt. State is hashed; nonce and PKCE verifier are authenticated and
+    encrypted. Applications may persist these values in any storage engine.
+    v1 preserves the field layout and reads v0.1.0 values, including the default
+    encoding/json representation; see docs/compatibility.md.
+
+type RefreshRequest struct {
+	RefreshToken    string
+	ExpectedSubject string
+	Scopes          []string
+}
+    RefreshRequest binds refresh to the previously verified subject. The caller
+    must atomically replace its stored token set only after success.
+
+type RegistrationConfig struct {
+	Endpoint              string
+	Metadata              json.RawMessage
+	InitialAccessToken    string
+	Transport             http.RoundTripper
+	AllowInsecureLoopback bool
+}
+    RegistrationConfig performs one OpenID Connect Dynamic Client Registration
+    request. Metadata is the complete standards-defined registration object;
+    callers retain policy over requested redirect URIs and key material.
+
+type ResponseMode string
+    ResponseMode identifies supported authorization-response encodings.
+
+const (
+	ResponseModeQuery    ResponseMode = "query"
+	ResponseModeFormPost ResponseMode = "form_post"
+	ResponseModeJWT      ResponseMode = "jwt"
+	ResponseModeQueryJWT ResponseMode = "query.jwt"
+	ResponseModeFormJWT  ResponseMode = "form_post.jwt"
+)
+type TokenSet struct {
+	AccessToken  string
+	TokenType    string
+	RefreshToken string
+	IDToken      string
+	Scope        []string
+	ExpiresAt    time.Time
+}
+    TokenSet is returned only by explicit token-bearing APIs. Consumers assume
+    responsibility for encryption at rest, rotation, revocation, and disclosure.

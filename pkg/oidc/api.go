@@ -16,6 +16,8 @@ import (
 // ProtectedAttempt is the storage-safe representation of one authorization
 // attempt. State is hashed; nonce and PKCE verifier are authenticated and
 // encrypted. Applications may persist these values in any storage engine.
+// v1 preserves the field layout and reads v0.1.0 values, including the default
+// encoding/json representation; see docs/compatibility.md.
 type ProtectedAttempt struct {
 	StateHash              [sha256.Size]byte
 	NonceCiphertext        [protectedSecretBytes]byte

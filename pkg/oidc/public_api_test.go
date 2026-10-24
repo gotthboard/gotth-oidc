@@ -3,6 +3,7 @@ package oidc_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -44,6 +45,18 @@ func TestPublicAPIIsUsableOutsidePackage(t *testing.T) {
 	})
 	if err == nil || client != nil {
 		t.Fatalf("New() = (%v, %v), want nil/error for insecure issuer", client, err)
+	}
+}
+
+func TestAuthorizationErrorIsInspectable(t *testing.T) {
+	original := &gotthoidc.AuthorizationError{Code: "access_denied", Description: "request denied", URI: "https://issuer.example/errors/access_denied"}
+	var err error = original
+	var target *gotthoidc.AuthorizationError
+	if !errors.As(err, &target) {
+		t.Fatal("errors.As did not expose AuthorizationError")
+	}
+	if target != original || target.Code != original.Code || target.Description != original.Description || target.URI != original.URI {
+		t.Fatalf("inspected authorization error = %+v, want %+v", target, original)
 	}
 }
 

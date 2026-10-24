@@ -1,7 +1,9 @@
 # Verification
 
-`make verify` is the required local gate. It pins Go 1.26.6, checks formatting,
-runs `go vet`, and runs the complete race-enabled suite with coverage.
+`make verify` is the required local gate. It pins Go 1.26.6, checks formatting
+and the frozen v1 public API, runs `go vet`, and runs the complete race-enabled
+suite with coverage. The suite also opens the checked-in v0.1.0
+`ProtectedAttempt` golden and verifies every envelope version policy.
 
 The suite covers confidential, public, JWT-authenticated, DPoP, and mutual-TLS
 client profiles; required Discovery metadata and defaults; root and split-origin
@@ -32,3 +34,14 @@ RFC-complete admission evidence:
 Provider integration remains a consumer admission gate because redirect-URI
 registration, tenant policy, TLS certificates, key custody, and persistent
 token/logout state belong to the consuming application.
+
+
+## v1 candidate gates
+
+The committed candidate additionally requires repeated race runs, every fuzz
+target, a clean detached clone, an external module compiling against the exact
+candidate, deterministic double-build comparison, checksum verification, SPDX
+JSON parsing, provenance subject verification, license inclusion, and two cold
+reviews of the same commit and evidence. Candidate-bound logs and generated
+assets stay outside the source commit so they cannot invalidate their own
+identity.

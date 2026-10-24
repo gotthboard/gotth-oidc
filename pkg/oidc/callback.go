@@ -12,9 +12,10 @@ import (
 
 const maxAuthorizationResponseBytes = 64 << 10
 
-// AuthorizationError is a redacted OAuth authorization error. Description and
-// URI are bounded display material; callers must not treat either as trusted
-// HTML or an instruction.
+// AuthorizationError is an inspectable OAuth authorization error. Callers may
+// use errors.As and inspect Code, Description, and URI. Description and URI are
+// bounded untrusted display material, never trusted HTML or instructions. Error
+// message text is diagnostic and is not a compatibility contract.
 type AuthorizationError struct {
 	Code        string
 	Description string

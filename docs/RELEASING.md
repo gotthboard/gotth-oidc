@@ -48,3 +48,39 @@ EXPECT_STATE=complete sh scripts/release-closeout-check.sh
 
 The check requires `git`, `curl`, `python3`, and `sha256sum`. A mismatch
 never authorizes moving the tag or replacing tagged source.
+
+## v1 source release candidate
+
+v1 stabilizes only the existing `pkg/oidc` contract. Protocol expansion,
+consumer migrations, tagging, pushing, hosted Release creation, and deployment
+are separate outcomes.
+
+From an exact committed candidate, build the source release set outside the
+repository:
+
+`@sh
+scripts/build-release-candidate.sh v1.0.0 OUTPUT_DIR COMMIT
+(cd OUTPUT_DIR && sha256sum -c SHA256SUMS)
+`@
+
+The builder verifies a byte-identical second source-archive build and requires
+its own bytes to match the selected commit. The release set consists of the
+source archive, SPDX 2.3 SBOM, license evidence, in-toto/SLSA provenance, and
+`SHA256SUMS`. The source archive must contain the repository MIT `LICENSE`.
+Generated evidence is candidate-bound and must not be committed back into the
+candidate it describes.
+
+Before an immutable v1 tag, require:
+
+1. the public API snapshot and v0.1.0 persisted-attempt golden checks;
+2. format, read-only module, vet, race, coverage, repeat, fuzz, clean-clone, and
+   exact external-consumer checks on one commit;
+3. deterministic release-set reproduction and semantic validation of the SBOM,
+   provenance subjects, checksum manifest, and license evidence;
+4. two fresh cold reviews of that exact commit and sealed evidence; and
+5. separately verified publication identity, signing prerequisites, canonical
+   Forgejo state, and mirror behavior.
+
+No prepared candidate, checksum, or release note authorizes a push, tag, hosted
+Release, or support-status change. Publication defects require a successor
+version; immutable refs and published assets are never rewritten.

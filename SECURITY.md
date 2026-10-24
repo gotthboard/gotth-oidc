@@ -2,10 +2,14 @@
 
 ## Supported versions
 
-Unreleased Go library with an unstable pre-1.0 API. No version currently
-carries a separate long-term security-support promise. Once releases exist,
-supported
-versions will be listed here and in the changelog.
+| Version | Security support |
+| --- | --- |
+| `v0.1.x` | supported until a published v1 transition says otherwise |
+| `v1.0.0` candidate | not released; no versioned support claim yet |
+| older/unreleased commits | unsupported |
+
+After v1.0.0 publication, the release closeout must update this table with the
+v0.1.x transition date. Source preparation alone does not change support.
 
 ## Reporting a vulnerability
 

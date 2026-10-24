@@ -6,6 +6,19 @@ Released sections use Semantic Versioning; unreleased work remains under
 
 ## Unreleased
 
+### v1.0.0 release candidate — 2026-10-24
+
+This candidate freezes the existing advertised `pkg/oidc` surface without
+adding protocol scope. It adds a checked public-API baseline, makes
+`AuthorizationError` inspection the typed error contract while leaving message
+text noncontractual, and proves that v0.1.0 `ProtectedAttempt` values remain
+readable across all three authenticated envelopes.
+
+Release engineering now produces a deterministic source archive, SPDX 2.3
+SBOM, license evidence, in-toto/SLSA provenance, and checksum manifest from one
+exact commit. No v1 tag, push, hosted Release, or support transition has occurred.
+
+
 ## v0.1.0 — 2026-09-21
 
 Release source: `1ae119e52f8efc3392fcc9fa716b1b27c9ffce6c`

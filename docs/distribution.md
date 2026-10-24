@@ -17,7 +17,9 @@ endpoints.
 
 ## Maturity and compatibility
 
-Current status: `v0.1.0`, an unstable pre-1.0 Go library release.
+Current published status: `v0.1.0`, an unstable pre-1.0 Go library release.
+The v1.0.0 source candidate is not a release and must not be advertised as an
+installable version before its immutable tag and hosted Release are verified.
 
 ## Current release use
 

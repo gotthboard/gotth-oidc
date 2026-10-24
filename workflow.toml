@@ -454,3 +454,85 @@ timeout_seconds = 600
 side_effect = "external_read"
 network = true
 retries = 0
+
+[feature.v1-release]
+id = "v1-release"
+slug = "v1-release"
+name = "Stabilize the existing OIDC package as v1"
+namespace = "oidc"
+parent = ""
+state = "in_progress"
+risk = "critical"
+assurance = "traceable-tests"
+created_at = "2026-10-24T13:38:00Z"
+activated_at = "2026-10-24T13:38:00Z"
+updated_at = "2026-10-24T13:38:00Z"
+folder = "workflow/features/v1-release"
+source_path = "pkg/oidc"
+worktree = "/home/linus/.openclaw/workspace/.artifacts/worktrees/gotth-oidc-v1-release"
+branch = "workflow/feature/v1-release"
+scope = ["Freeze the existing exported pkg/oidc contract", "Preserve v0.1.0 ProtectedAttempt values across v1", "Prepare deterministic v1.0.0 source release evidence"]
+non_goals = ["Add or remove protocol capabilities", "Add application users, sessions, cookies, persistence, routing, or authorization", "Push, tag, create a hosted Release, or migrate a consumer"]
+affected_files = ["Makefile", "README.md", "SECURITY.md", "pkg/oidc/**", "docs/**", "scripts/**", "workflow.toml", "workflow.events.jsonl", "workflow/features/v1-release/**"]
+invariants = ["All v0.1.0 advertised protocol behavior and security boundaries remain unchanged", "v0.1.0 in-flight ProtectedAttempt values remain readable", "AuthorizationError remains inspectable", "Other error strings remain noncontractual", "No publication side effect occurs"]
+acceptance = ["Public API snapshot is exact", "Cross-version golden covers JSON persistence and all three envelopes", "Focused, race, repeat, fuzz, clean-clone, external-consumer, release-artifact, and two cold review gates pass on one exact commit"]
+
+[[feature.v1-release.dependency]]
+id = "mit-license"
+type = "prerequisite"
+state = "satisfied"
+evidence = "workflow/features/mit-license/evidence/verification.md"
+satisfied_at = "2026-10-24T13:38:00Z"
+source_commit = "1ae119e52f8efc3392fcc9fa716b1b27c9ffce6c"
+
+[feature.v1-release.rollback]
+strategy = "delete_unpublished_branch_or_revert_candidate_commits"
+notes = "No v1 tag or publication exists; v0.1.0 remains immutable and supported"
+data_loss_risk = false
+requires_migration_down = false
+
+[[feature.v1-release.interface]]
+name = "Go pkg/oidc API and ProtectedAttempt persistence"
+kind = "api"
+stability = "stable-v1-candidate"
+change = "stabilize-existing-surface"
+
+[[feature.v1-release.verification]]
+id = "verify"
+kind = "unit-integration"
+command = "make verify"
+required = true
+timeout_seconds = 1200
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.v1-release.verification]]
+id = "heavy"
+kind = "stability-fuzz-clean-clone"
+command = "repeat race, declared fuzz targets, clean clone, and external exact-commit consumer on development"
+required = true
+timeout_seconds = 3600
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.v1-release.verification]]
+id = "release-set"
+kind = "release-artifact"
+command = "scripts/build-release-candidate.sh v1.0.0 OUTPUT_DIR COMMIT and validate all subjects"
+required = true
+timeout_seconds = 600
+side_effect = "local_write"
+network = false
+retries = 0
+
+[[feature.v1-release.verification]]
+id = "cold-reviews"
+kind = "review"
+command = "two independent cold reviews of exact candidate and sealed evidence"
+required = true
+timeout_seconds = 1200
+side_effect = "external_read"
+network = false
+retries = 0

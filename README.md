@@ -61,19 +61,23 @@ routing, provider registration policy, and protected-resource business clients
 also remain consumer responsibilities.
 
 See `docs/conformance.md` for the standards and capability matrix. GOTTH Mail
-is the first admitted consumer of the `v0.1.0` compatibility contract.
+is the first admitted consumer of the `v0.1.0` contract. The prepared v1
+contract stabilizes this same advertised scope without protocol expansion; see
+`docs/compatibility.md`.
 
 ## Installation, compatibility, and support
 
-The current release is `v0.1.0`. The Go API remains pre-1.0; the exact
-supported standards surface is recorded in `docs/conformance.md`.
+The current published module release remains `v0.1.0`. A `v1.0.0` candidate
+is prepared but is not installable as v1 until an immutable tag is published.
+The exact supported standards surface is recorded in `docs/conformance.md`; the
+v1 API, error, and persisted-attempt promises are in `docs/compatibility.md`.
 
 ```sh
 go get github.com/gotthboard/gotth-oidc@v0.1.0
 ```
 
-The repository is licensed under the [MIT License](LICENSE). The pre-1.0 API
-has no long-term compatibility or support promise.
+The repository is licensed under the [MIT License](LICENSE). `v0.1.0` remains
+pre-1.0; the v1 compatibility promise begins only when v1.0.0 is tagged.
 Versioning, release admission, security reporting, and contribution details are
 in [the release policy](docs/RELEASING.md), [security policy](SECURITY.md), and
 [contribution guide](CONTRIBUTING.md).

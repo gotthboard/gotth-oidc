@@ -97,8 +97,12 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		}
 	}
 	var nilAuthorizationError *AuthorizationError
-	if nilAuthorizationError.Error() != "OIDC authorization failed" || (&AuthorizationError{}).Error() != "OIDC authorization failed" {
-		t.Fatal("empty authorization errors are not redacted")
+	if nilAuthorizationError.Error() == "" || (&AuthorizationError{}).Error() == "" {
+		t.Fatal("empty authorization errors must remain printable")
+	}
+	untrusted := &AuthorizationError{Code: "access_denied", Description: "<script>secret</script>", URI: "javascript:secret"}
+	if message := untrusted.Error(); strings.Contains(message, untrusted.Description) || strings.Contains(message, untrusted.URI) {
+		t.Fatal("authorization error diagnostic exposed untrusted display material")
 	}
 }
 
