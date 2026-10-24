@@ -7,7 +7,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 sh -n "$builder"
 
-for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01; do
+for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01 v1.0.0+meta v1.0.0+incompatible; do
   if "$builder" "$invalid" "$tmp/invalid" HEAD >/dev/null 2>&1; then
     echo "release builder accepted invalid version: $invalid" >&2
     exit 1
@@ -58,8 +58,13 @@ fi
 (
   cd "$tmp/release"
   sha256sum -c SHA256SUMS >/dev/null
-  test "$(cat CANDIDATE_COMMIT)" = "$(git -C "$root" rev-parse HEAD)"
 )
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=tar.umask GIT_CONFIG_VALUE_0=0077 \
+  "$builder" v1.0.0 "$tmp/release-umask" HEAD >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-umask" >/dev/null; then
+  echo "release output inherited tar.umask" >&2
+  exit 1
+fi
 before=$(find "$tmp/release" -type f -print0 | sort -z | xargs -0 sha256sum)
 if "$builder" v1.0.0 "$tmp/release" HEAD >/dev/null 2>&1; then
   echo "release builder overwrote an existing release set" >&2

@@ -11,7 +11,7 @@ ref=HEAD
 if [ "$#" -eq 3 ]; then ref=$3; fi
 if ! python3 - "$version" <<'PY'
 import re, sys
-match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", sys.argv[1])
+match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?", sys.argv[1])
 if match is None:
     raise SystemExit(1)
 prerelease = match.group(4)
@@ -64,7 +64,7 @@ checksums="$output/SHA256SUMS"
 
 build_archive() {
   destination=$1
-  git archive --format=tar --prefix="$stem/" "$commit" | gzip -n -9 >"$destination"
+  git -c tar.umask=0002 archive --format=tar --prefix="$stem/" "$commit" | gzip -n -9 >"$destination"
 }
 build_archive "$archive"
 build_archive "$tmp/rebuilt.tar.gz"
@@ -178,7 +178,6 @@ PY
   sha256sum "$stem-source.tar.gz" "$stem.spdx.json" "$stem.LICENSE-EVIDENCE.txt" "$stem.provenance.json" >"$(basename "$checksums")"
   sha256sum -c "$(basename "$checksums")"
 )
-printf '%s\n' "$commit" >"$output/CANDIDATE_COMMIT"
 mv -T --no-clobber -- "$stage" "$final_output"
 if [ -e "$stage" ]; then
   echo "OUTPUT_DIR appeared while the release set was being built" >&2
