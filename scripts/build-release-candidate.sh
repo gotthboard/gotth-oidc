@@ -26,7 +26,7 @@ then
   exit 2
 fi
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 cd "$root"
 commit=$(git rev-parse --verify "$ref^{commit}")
 script_at_ref=$(mktemp)
@@ -48,8 +48,10 @@ if [ -e "$output" ] || [ -L "$output" ]; then
   exit 2
 fi
 final_output=$(readlink -m -- "$output")
+git_common_dir=$(readlink -f -- "$(git rev-parse --git-common-dir)")
 case "$final_output/" in
   "$root/"*) echo "OUTPUT_DIR must be outside the source repository" >&2; exit 2 ;;
+  "$git_common_dir/"*) echo "OUTPUT_DIR must be outside the repository Git directory" >&2; exit 2 ;;
 esac
 output_parent=$(dirname -- "$final_output")
 if [ ! -d "$output_parent" ]; then

@@ -40,6 +40,30 @@ if [ -e "$probe" ] || [ -L "$probe" ]; then
   echo "release builder mutated the repository before rejecting its output path" >&2
   exit 1
 fi
+ln -s "$root" "$tmp/root-link"
+symlink_probe="$root/.release-symlink-output-probe"
+if [ -e "$symlink_probe" ] || [ -L "$symlink_probe" ]; then
+  echo "symlink output probe path already exists: $symlink_probe" >&2
+  exit 1
+fi
+if "$tmp/root-link/scripts/build-release-candidate.sh" v1.0.0 "$symlink_probe" HEAD >/dev/null 2>&1; then
+  rm -rf "$symlink_probe"
+  echo "release builder accepted in-tree output through a symlinked invocation" >&2
+  exit 1
+fi
+test ! -e "$symlink_probe"
+git_common_dir=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)
+git_probe="$git_common_dir/.release-output-probe"
+if [ -e "$git_probe" ] || [ -L "$git_probe" ]; then
+  echo "Git-directory output probe path already exists: $git_probe" >&2
+  exit 1
+fi
+if "$builder" v1.0.0 "$git_probe" HEAD >/dev/null 2>&1; then
+  rm -rf "$git_probe"
+  echo "release builder accepted output inside the common Git directory" >&2
+  exit 1
+fi
+test ! -e "$git_probe"
 
 mkdir "$tmp/existing"
 printf 'preserve me\n' >"$tmp/existing/stale"

@@ -76,6 +76,9 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 		values = parsed
 		// Query is also the carrier for the plain `jwt` response mode.
 	case http.MethodPost:
+		if request.URL.RawQuery != "" {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC callback mixes query and form parameters")
+		}
 		if request.Body == nil || request.ContentLength > maxAuthorizationResponseBytes {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback form is missing or oversized")
 		}
@@ -86,9 +89,6 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 		request.Body = http.MaxBytesReader(nil, request.Body, maxAuthorizationResponseBytes)
 		if err := request.ParseForm(); err != nil {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback form is invalid")
-		}
-		if request.URL.RawQuery != "" {
-			return AuthorizationResponse{}, fmt.Errorf("OIDC callback mixes query and form parameters")
 		}
 		values = request.PostForm
 	default:

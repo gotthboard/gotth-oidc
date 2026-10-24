@@ -32,6 +32,17 @@ type staticJWTDecrypter struct {
 	err   error
 }
 
+type trackingReadCloser struct {
+	reads int
+}
+
+func (reader *trackingReadCloser) Read([]byte) (int, error) {
+	reader.reads++
+	return 0, errors.New("callback body was read")
+}
+
+func (*trackingReadCloser) Close() error { return nil }
+
 func (decrypter staticJWTDecrypter) DecryptJWT(context.Context, string) (string, error) {
 	return decrypter.value, decrypter.err
 }
@@ -86,6 +97,13 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error=denied&code=c", nil),
 		{Method: http.MethodGet, URL: &url.URL{RawQuery: "code=c&state=s&ignored=%zz"}},
 	}
+	unreadBody := &trackingReadCloser{}
+	earlyMixed := &http.Request{
+		Method: http.MethodPost, URL: &url.URL{RawQuery: strings.Repeat("x", maxAuthorizationResponseBytes+1)},
+		Header: http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+		Body:   unreadBody, ContentLength: int64(len("code=c&state=s")),
+	}
+	requests = append(requests, earlyMixed)
 	badType := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader("code=c&state=s"))
 	badType.Header.Set("Content-Type", "application/json")
 	requests = append(requests, badType)
@@ -96,6 +114,9 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		if got, err := ParseCallback(request); err == nil || got != (AuthorizationResponse{}) {
 			t.Fatalf("request %d = (%+v, %v), want zero/error", index, got, err)
 		}
+	}
+	if unreadBody.reads != 0 {
+		t.Fatal("mixed POST callback body was read before query rejection")
 	}
 	var nilAuthorizationError *AuthorizationError
 	nilMessage := nilAuthorizationError.Error()

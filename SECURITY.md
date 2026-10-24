@@ -4,12 +4,13 @@
 
 | Version | Security support |
 | --- | --- |
-| `v0.1.x` | supported until a published v1 transition says otherwise |
+| `v0.1.0` | published; no separate long-term security-support promise |
 | `v1.0.0` candidate | not released; no versioned support claim yet |
 | older/unreleased commits | unsupported |
 
-After v1.0.0 publication, the release closeout must update this table with the
-v0.1.x transition date. Source preparation alone does not change support.
+Security reports are accepted for the published release, but remediation and
+version support remain case-by-case until an explicit support policy is adopted.
+Source preparation alone does not change support.
 
 ## Reporting a vulnerability
 
