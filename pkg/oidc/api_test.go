@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 const validEncodedLoginState = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -22,6 +24,24 @@ func TestClientRejectsIncompleteUseAndRedactsFormatting(t *testing.T) {
 	formatted := fmt.Sprintf("%+v", Client{})
 	if formatted != "[REDACTED OIDC CLIENT]" || strings.Contains(formatted, "secret") {
 		t.Fatalf("formatted client = %q", formatted)
+	}
+}
+
+func TestCompletionRejectsUninitializedClientAndNilContextBeforeJARM(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		client *Client
+		ctx    context.Context
+	}{
+		{name: "zero-value client", client: &Client{}, ctx: context.Background()},
+		{name: "nil context", client: &Client{clock: time.Now}, ctx: nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			completion, err := test.client.CompleteTokens(test.ctx, AuthorizationResponse{ResponseJWT: "a.b.c"}, ProtectedAttempt{})
+			if err == nil || !reflect.DeepEqual(completion, Completion{}) {
+				t.Fatalf("CompleteTokens() = (%+v, %v), want zero/error", completion, err)
+			}
+		})
 	}
 }
 

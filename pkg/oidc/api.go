@@ -191,8 +191,11 @@ func (client *Client) CompleteTokens(ctx context.Context, response Authorization
 }
 
 func (client *Client) complete(ctx context.Context, response AuthorizationResponse, attempt ProtectedAttempt, returnTokens bool) (Completion, error) {
-	if client == nil {
+	if client == nil || client.clock == nil {
 		return Completion{}, fmt.Errorf("OIDC client is not initialized")
+	}
+	if ctx == nil {
+		return Completion{}, fmt.Errorf("OIDC completion context is required")
 	}
 	state := response.State
 	if response.ResponseJWT != "" {
