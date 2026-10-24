@@ -15,7 +15,7 @@ text noncontractual, and proves that v0.1.0 `ProtectedAttempt` values remain
 readable across all three authenticated envelopes. It also prevents reassignment
 of the exported same-origin policy value from weakening the nil-policy default,
 rejects uninitialized completion clients or nil completion contexts before JARM
-processing, bounds custom-decrypter output, validates signed authorization
+processing, bounds custom-decrypter output, validates authorization response
 error fields before they reach diagnostics, and rejects malformed callback query
 encoding instead of silently dropping it.
 

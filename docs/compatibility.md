@@ -20,8 +20,10 @@ module.
 
 `AuthorizationError` is the typed error contract. Callers may use `errors.As`
 to obtain `*AuthorizationError` and inspect `Code`, `Description`, and `URI`.
-Description and URI are bounded but untrusted. Error message strings, including
-`AuthorizationError.Error()`, are diagnostics and are not compatibility
+Description and URI are bounded but untrusted. Parsed, signed, and manually
+constructed authorization responses are validated before the typed error is
+surfaced. Error message strings, including `AuthorizationError.Error()`, are
+diagnostics and are not compatibility
 contracts; callers must not parse or compare them.
 
 ## Persisted ProtectedAttempt values

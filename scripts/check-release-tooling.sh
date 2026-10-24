@@ -1,14 +1,15 @@
 #!/bin/sh
 set -eu
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 builder="$root/scripts/build-release-candidate.sh"
+candidate=$(git -C "$root" rev-parse HEAD)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 sh -n "$builder"
 
 for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01 v1.0.0+meta v1.0.0+incompatible v2.0.0 v999.0.0; do
-  if "$builder" "$invalid" "$tmp/invalid" HEAD >/dev/null 2>&1; then
+  if "$builder" "$invalid" "$tmp/invalid" "$candidate" >/dev/null 2>&1; then
     echo "release builder accepted invalid version: $invalid" >&2
     exit 1
   fi
@@ -22,13 +23,18 @@ if [ -e "$tmp/bad-ref" ]; then
   echo "release builder created output before validating its ref" >&2
   exit 1
 fi
+if "$builder" v1.0.0 "$tmp/symbolic-ref" HEAD >/dev/null 2>&1; then
+  echo "release builder accepted a symbolic ref" >&2
+  exit 1
+fi
+test ! -e "$tmp/symbolic-ref"
 
 probe="$root/.release-output-probe"
 if [ -e "$probe" ] || [ -L "$probe" ]; then
   echo "release output probe path already exists: $probe" >&2
   exit 1
 fi
-if output=$("$builder" v1.0.0 "$probe" HEAD 2>&1); then
+if output=$("$builder" v1.0.0 "$probe" "$candidate" 2>&1); then
   echo "release builder accepted an output directory inside the repository" >&2
   exit 1
 fi
@@ -46,7 +52,7 @@ if [ -e "$symlink_probe" ] || [ -L "$symlink_probe" ]; then
   echo "symlink output probe path already exists: $symlink_probe" >&2
   exit 1
 fi
-if "$tmp/root-link/scripts/build-release-candidate.sh" v1.0.0 "$symlink_probe" HEAD >/dev/null 2>&1; then
+if "$tmp/root-link/scripts/build-release-candidate.sh" v1.0.0 "$symlink_probe" "$candidate" >/dev/null 2>&1; then
   rm -rf "$symlink_probe"
   echo "release builder accepted in-tree output through a symlinked invocation" >&2
   exit 1
@@ -58,7 +64,7 @@ if [ -e "$git_probe" ] || [ -L "$git_probe" ]; then
   echo "Git-directory output probe path already exists: $git_probe" >&2
   exit 1
 fi
-if "$builder" v1.0.0 "$git_probe" HEAD >/dev/null 2>&1; then
+if "$builder" v1.0.0 "$git_probe" "$candidate" >/dev/null 2>&1; then
   rm -rf "$git_probe"
   echo "release builder accepted output inside the common Git directory" >&2
   exit 1
@@ -67,36 +73,54 @@ test ! -e "$git_probe"
 
 mkdir "$tmp/existing"
 printf 'preserve me\n' >"$tmp/existing/stale"
-if "$builder" v1.0.0 "$tmp/existing" HEAD >/dev/null 2>&1; then
+if "$builder" v1.0.0 "$tmp/existing" "$candidate" >/dev/null 2>&1; then
   echo "release builder accepted an existing output directory" >&2
   exit 1
 fi
 test "$(find "$tmp/existing" -mindepth 1 -maxdepth 1 -printf '%f\n')" = stale
 ln -s existing "$tmp/symlink"
-if "$builder" v1.0.0 "$tmp/symlink" HEAD >/dev/null 2>&1; then
+if "$builder" v1.0.0 "$tmp/symlink" "$candidate" >/dev/null 2>&1; then
   echo "release builder accepted a symlink output path" >&2
   exit 1
 fi
 
-"$builder" v1.0.0 "$tmp/release" HEAD >/dev/null
+"$builder" v1.0.0 "$tmp/release" "$candidate" >/dev/null
 (
   cd "$tmp/release"
   sha256sum -c SHA256SUMS >/dev/null
 )
+mkdir "$tmp/python-path"
+cat >"$tmp/python-path/sitecustomize.py" <<'PY'
+import sys
+if len(sys.argv) > 1:
+    sys.argv[1] = "v1.0.0"
+PY
+if PYTHONPATH="$tmp/python-path" "$builder" v1.0.0+forbidden "$tmp/release-pythonpath" "$candidate" >/dev/null 2>&1; then
+  echo "release builder inherited PYTHONPATH" >&2
+  exit 1
+fi
+test ! -e "$tmp/release-pythonpath"
+cp "$root/go.mod" "$tmp/poisoned.mod"
+sed -i 's|^module .*|module example.invalid/poisoned|' "$tmp/poisoned.mod"
+GOFLAGS="-modfile=$tmp/poisoned.mod" "$builder" v1.0.0 "$tmp/release-goflags" "$candidate" >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-goflags" >/dev/null; then
+  echo "release output inherited GOFLAGS" >&2
+  exit 1
+fi
 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=tar.umask GIT_CONFIG_VALUE_0=0077 \
-  "$builder" v1.0.0 "$tmp/release-umask" HEAD >/dev/null
+  "$builder" v1.0.0 "$tmp/release-umask" "$candidate" >/dev/null
 if ! diff -qr "$tmp/release" "$tmp/release-umask" >/dev/null; then
   echo "release output inherited tar.umask" >&2
   exit 1
 fi
-GZIP=--rsyncable "$builder" v1.0.0 "$tmp/release-gzip-env" HEAD >/dev/null
+GZIP=--rsyncable "$builder" v1.0.0 "$tmp/release-gzip-env" "$candidate" >/dev/null
 if ! diff -qr "$tmp/release" "$tmp/release-gzip-env" >/dev/null; then
   echo "release output inherited GZIP options" >&2
   exit 1
 fi
 printf 'README.md export-ignore\n' >"$tmp/global-attributes"
 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.attributesFile GIT_CONFIG_VALUE_0="$tmp/global-attributes" \
-  "$builder" v1.0.0 "$tmp/release-global-attributes" HEAD >/dev/null
+  "$builder" v1.0.0 "$tmp/release-global-attributes" "$candidate" >/dev/null
 if ! diff -qr "$tmp/release" "$tmp/release-global-attributes" >/dev/null; then
   echo "release output inherited core.attributesFile" >&2
   exit 1
@@ -104,8 +128,13 @@ fi
 git clone --quiet --shared "$root" "$tmp/poisoned-repo"
 git -C "$tmp/poisoned-repo" checkout --quiet --detach "$(git -C "$root" rev-parse HEAD)"
 poisoned_git_dir=$(git -C "$tmp/poisoned-repo" rev-parse --absolute-git-dir)
+GIT_DIR="$poisoned_git_dir" "$builder" v1.0.0 "$tmp/release-git-dir" "$candidate" >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-git-dir" >/dev/null; then
+  echo "release output inherited GIT_DIR" >&2
+  exit 1
+fi
 printf 'README.md export-ignore\n' >"$poisoned_git_dir/info/attributes"
-"$tmp/poisoned-repo/scripts/build-release-candidate.sh" v1.0.0 "$tmp/release-info-attributes" HEAD >/dev/null
+"$tmp/poisoned-repo/scripts/build-release-candidate.sh" v1.0.0 "$tmp/release-info-attributes" "$candidate" >/dev/null
 if ! diff -qr "$tmp/release" "$tmp/release-info-attributes" >/dev/null; then
   echo "release output inherited info/attributes" >&2
   exit 1
@@ -118,7 +147,6 @@ sed -i 's|^module .*|module example.invalid/replaced|' "$tmp/replaced-repo/go.mo
 git -C "$tmp/replaced-repo" add go.mod
 git -C "$tmp/replaced-repo" commit --quiet -m "poison replacement"
 replacement=$(git -C "$tmp/replaced-repo" rev-parse HEAD)
-candidate=$(git -C "$root" rev-parse HEAD)
 git -C "$tmp/replaced-repo" replace "$candidate" "$replacement"
 "$tmp/replaced-repo/scripts/build-release-candidate.sh" v1.0.0 "$tmp/release-replacement-ref" "$candidate" >/dev/null
 if ! diff -qr "$tmp/release" "$tmp/release-replacement-ref" >/dev/null; then
@@ -126,7 +154,7 @@ if ! diff -qr "$tmp/release" "$tmp/release-replacement-ref" >/dev/null; then
   exit 1
 fi
 before=$(find "$tmp/release" -type f -print0 | sort -z | xargs -0 sha256sum)
-if "$builder" v1.0.0 "$tmp/release" HEAD >/dev/null 2>&1; then
+if "$builder" v1.0.0 "$tmp/release" "$candidate" >/dev/null 2>&1; then
   echo "release builder overwrote an existing release set" >&2
   exit 1
 fi

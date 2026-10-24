@@ -520,7 +520,7 @@ func TestAuthorizationCapabilityFailures(t *testing.T) {
 func TestCompletionRejectsAttemptAndResponseMismatches(t *testing.T) {
 	harness := newOIDCExchangeHarness(t)
 	defer harness.server.Close()
-	client, err := New(context.Background(), Config{IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret", RedirectURL: "https://forum.example/cb", Transport: harness.server.Client().Transport, Entropy: bytes.NewReader(sequentialBytes(640)), AllowInsecureLoopback: true})
+	client, err := New(context.Background(), Config{IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret", RedirectURL: "https://forum.example/cb", Transport: harness.server.Client().Transport, Entropy: bytes.NewReader(sequentialBytes(1024)), AllowInsecureLoopback: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -550,6 +550,16 @@ func TestCompletionRejectsAttemptAndResponseMismatches(t *testing.T) {
 	authorizationError := &AuthorizationError{Code: "access_denied"}
 	if _, err := client.CompleteResponse(context.Background(), AuthorizationResponse{State: state, Error: authorizationError, Mode: ResponseModeQuery}, authorization.Attempt); !errors.Is(err, authorizationError) {
 		t.Fatalf("authorization error = %v, want original", err)
+	}
+	for _, malformed := range []*AuthorizationError{
+		{Code: "bad\nerror"},
+		{Code: "denied", Description: strings.Repeat("x", 4097)},
+		{Code: "denied", URI: strings.Repeat("x", 2049)},
+	} {
+		authorization, state = begin()
+		if _, err := client.CompleteResponse(context.Background(), AuthorizationResponse{State: state, Error: malformed, Mode: ResponseModeQuery}, authorization.Attempt); err == nil || errors.Is(err, malformed) {
+			t.Fatalf("malformed manual authorization error accepted: %+v", malformed)
+		}
 	}
 }
 

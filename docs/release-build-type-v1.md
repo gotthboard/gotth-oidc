@@ -2,9 +2,11 @@
 
 ## Build type
 
-The `scripts/build-release-candidate.sh` build type accepts an exact Git commit
-and Go-compatible SemVer tag name; build metadata is rejected. It creates a
-deterministic `git archive` source
+The `scripts/build-release-candidate.sh` wrapper accepts an exact full Git
+commit object ID and Go-compatible SemVer tag name; symbolic refs and build
+metadata are rejected. It executes the checked-in worker in a clean environment
+that retains only the tool search path and explicit reproducibility settings.
+The worker creates a deterministic `git archive` source
 archive, SPDX 2.3 SBOM, MIT license evidence, an unsigned in-toto statement with
 a SLSA provenance v1 predicate, and `SHA256SUMS`. It builds the source archive
 twice from an isolated bare Git directory with system/global configuration,
@@ -24,8 +26,9 @@ for this library-only release.
 
 ## Local builder
 
-The builder identity denotes the content-addressed recipe in the same commit,
-not a trusted hosted build platform. The statement deliberately omits invocation
+The builder identity denotes the content-addressed wrapper and worker recipes in
+the same commit, not a trusted hosted build platform. The statement deliberately
+omits invocation
 IDs and execution timestamps so deterministic rebuilds remain byte-identical and
 do not claim events that the recipe cannot authenticate. It is unsigned local
 provenance: checksums prove internal consistency, not who ran the build. The
