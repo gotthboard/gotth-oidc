@@ -12,6 +12,10 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 sh -n "$builder"
+GOENV=off GOTOOLCHAIN=local go mod graph | LC_ALL=C sort >"$tmp/module-graph.txt"
+diff -u "$root/docs/module-graph-v1.txt" "$tmp/module-graph.txt"
+GOENV=off GOTOOLCHAIN=local go list -mod=readonly -m -f '{{if .Main}}{{.Path}}{{else}}{{.Path}}@{{.Version}}{{end}}' all | LC_ALL=C sort >"$tmp/module-list.txt"
+diff -u "$root/docs/module-list-v1.txt" "$tmp/module-list.txt"
 
 for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01 v1.0.0+meta v1.0.0+incompatible v2.0.0 v999.0.0; do
   if "$builder" "$invalid" "$tmp/invalid" "$candidate" >/dev/null 2>&1; then
@@ -104,6 +108,15 @@ fi
   cd "$tmp/release"
   sha256sum -c SHA256SUMS >/dev/null
 )
+python3 -I - "$tmp/release/gotth-oidc-v1.0.0.spdx.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+ids = {(package["name"], package.get("versionInfo")): package["SPDXID"] for package in data["packages"]}
+oauth = ids[("golang.org/x/oauth2", "v0.36.0")]
+metadata = ids[("cloud.google.com/go/compute/metadata", "v0.3.0")]
+if not any(item["spdxElementId"] == oauth and item["relationshipType"] == "DEPENDS_ON" and item["relatedSpdxElement"] == metadata for item in data["relationships"]):
+    raise SystemExit("SBOM omits the selected oauth2 to compute-metadata edge")
+PY
 mkdir "$tmp/poison-path"
 for tool in git go python3 date gzip; do
   cat >"$tmp/poison-path/$tool" <<'SH'

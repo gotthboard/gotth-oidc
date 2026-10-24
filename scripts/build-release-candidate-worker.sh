@@ -115,6 +115,8 @@ cmp "$archive" "$tmp/rebuilt.tar.gz"
 git show "$commit:go.mod" >"$tmp/go.mod"
 git show "$commit:go.sum" >"$tmp/go.sum"
 git show "$commit:LICENSE" >"$tmp/LICENSE"
+git show "$commit:docs/module-list-v1.txt" >"$tmp/module-list.txt"
+git show "$commit:docs/module-graph-v1.txt" >"$tmp/module-graph.txt"
 (cd "$tmp" && go mod edit -json) >"$tmp/go-mod.json"
 commit_epoch=$(git show -s --format=%ct "$commit")
 commit_time=$(date -u -d "@$commit_epoch" +%Y-%m-%dT%H:%M:%SZ)
@@ -138,11 +140,15 @@ archive_contains_license=true
 EOT
 license_evidence_sha=$(sha256sum "$license_evidence" | awk '{print $1}')
 
-python3 -I - "$version" "$commit" "$commit_time" "$source_sha" "$license_sha" "$license_copyright" "$tmp/go-mod.json" "$sbom" <<'PY'
+python3 -I - "$version" "$commit" "$commit_time" "$source_sha" "$license_sha" "$license_copyright" "$tmp/go-mod.json" "$tmp/module-list.txt" "$tmp/module-graph.txt" "$sbom" <<'PY'
 import json, pathlib, sys
-version, commit, created, source_sha, license_sha, copyright_text, gomod_path, output = sys.argv[1:]
+version, commit, created, source_sha, license_sha, copyright_text, gomod_path, module_list_path, module_graph_path, output = sys.argv[1:]
 data = json.loads(pathlib.Path(gomod_path).read_text())
 module = data["Module"]["Path"]
+selected = [line for line in pathlib.Path(module_list_path).read_text().splitlines() if line]
+if selected.count(module) != 1:
+    raise SystemExit("selected module list does not identify the root exactly once")
+dependencies = sorted(node for node in selected if node != module)
 packages = [{
     "SPDXID": "SPDXRef-Package-gotth-oidc",
     "name": module,
@@ -154,10 +160,11 @@ packages = [{
     "copyrightText": copyright_text,
     "checksums": [{"algorithm": "SHA256", "checksumValue": source_sha}],
 }]
-relationships = []
-for index, requirement in enumerate(sorted(data.get("Require") or [], key=lambda item: (item["Path"], item["Version"]))):
-    path, dep_version = requirement["Path"], requirement["Version"]
-    spdx_id = f"SPDXRef-Dependency-{index + 1}"
+id_by_node = {module: "SPDXRef-Package-gotth-oidc"}
+for index, node in enumerate(dependencies, 1):
+    path, dep_version = node.rsplit("@", 1)
+    spdx_id = f"SPDXRef-Dependency-{index}"
+    id_by_node[node] = spdx_id
     packages.append({
         "SPDXID": spdx_id,
         "name": path,
@@ -169,7 +176,20 @@ for index, requirement in enumerate(sorted(data.get("Require") or [], key=lambda
         "copyrightText": "NOASSERTION",
         "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": f"pkg:golang/{path}@{dep_version}"}],
     })
-    relationships.append({"spdxElementId": "SPDXRef-Package-gotth-oidc", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": spdx_id})
+relationships = []
+seen_relationships = set()
+for line in pathlib.Path(module_graph_path).read_text().splitlines():
+    if not line:
+        continue
+    parent, child = line.split(" ", 1)
+    if parent not in id_by_node or child not in id_by_node:
+        continue
+    relationship = (id_by_node[parent], id_by_node[child])
+    if relationship in seen_relationships:
+        continue
+    seen_relationships.add(relationship)
+    relationships.append({"spdxElementId": relationship[0], "relationshipType": "DEPENDS_ON", "relatedSpdxElement": relationship[1]})
+relationships.sort(key=lambda item: (item["spdxElementId"], item["relatedSpdxElement"]))
 document = {
     "spdxVersion": "SPDX-2.3",
     "dataLicense": "CC0-1.0",

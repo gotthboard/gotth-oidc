@@ -38,8 +38,9 @@ token/logout state belong to the consuming application.
 
 ## v1 candidate gates
 
-The committed candidate additionally requires repeated race runs, every fuzz
-target, a clean detached clone, an external module compiling against the exact
+The committed candidate additionally requires the checked selected-module list
+and dependency graph to match Go's resolved graph, repeated race runs, every
+fuzz target, a clean detached clone, an external module compiling against the exact
 candidate, deterministic double-build comparison, checksum verification, SPDX
 JSON parsing, provenance subject verification, license inclusion, and two cold
 reviews of the same commit and evidence. Candidate-bound logs and generated

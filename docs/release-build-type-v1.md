@@ -8,7 +8,8 @@ metadata are rejected. It fixes the supported system-tool path before its first
 external command, then executes the checked-in worker in a clean environment
 with only explicit reproducibility settings.
 The worker creates a deterministic `git archive` source
-archive, SPDX 2.3 SBOM, MIT license evidence, an unsigned in-toto statement with
+archive, SPDX 2.3 SBOM from the checked selected-module list and dependency
+edges, MIT license evidence, an unsigned in-toto statement with
 a SLSA provenance v1 predicate, and `SHA256SUMS`. It builds the source archive
 twice from an isolated bare Git directory with system/global configuration,
 external attributes, repository-local info attributes, replacement refs, and the

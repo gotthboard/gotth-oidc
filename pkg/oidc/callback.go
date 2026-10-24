@@ -115,20 +115,36 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 	if request.Method == http.MethodPost {
 		mode = ResponseModeFormPost
 	}
-	response := AuthorizationResponse{Code: values.Get("code"), State: values.Get("state"), Issuer: values.Get("iss"), ResponseJWT: values.Get("response"), Mode: mode}
-	if errorCode := values.Get("error"); errorCode != "" {
-		if response.Code != "" || response.ResponseJWT != "" {
+	_, hasResponseJWT := values["response"]
+	if hasResponseJWT {
+		for _, name := range []string{"code", "state", "iss", "error", "error_description", "error_uri"} {
+			if _, present := values[name]; present {
+				return AuthorizationResponse{}, fmt.Errorf("OIDC callback combines JWT and direct response parameters")
+			}
+		}
+		if values.Get("response") == "" {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC callback JWT response is empty")
+		}
+		return AuthorizationResponse{ResponseJWT: values.Get("response"), Mode: mode}, nil
+	}
+	_, hasError := values["error"]
+	_, hasErrorDescription := values["error_description"]
+	_, hasErrorURI := values["error_uri"]
+	if !hasError && (hasErrorDescription || hasErrorURI) {
+		return AuthorizationResponse{}, fmt.Errorf("OIDC callback error details omit error")
+	}
+	response := AuthorizationResponse{Code: values.Get("code"), State: values.Get("state"), Issuer: values.Get("iss"), Mode: mode}
+	if hasError {
+		errorCode := values.Get("error")
+		if errorCode == "" {
+			return AuthorizationResponse{}, fmt.Errorf("OIDC callback error code is empty")
+		}
+		if _, hasCode := values["code"]; hasCode {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback combines success and error parameters")
 		}
 		response.Error = &AuthorizationError{Code: errorCode, Description: values.Get("error_description"), URI: values.Get("error_uri")}
 		if response.State == "" {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback error response omits state")
-		}
-		return response, nil
-	}
-	if response.ResponseJWT != "" {
-		if response.Code != "" || response.State != "" || response.Issuer != "" {
-			return AuthorizationResponse{}, fmt.Errorf("OIDC callback combines JWT and direct response parameters")
 		}
 		return response, nil
 	}

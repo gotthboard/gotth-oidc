@@ -97,6 +97,8 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&response=j&code=c", nil),
 		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error=denied&code=c", nil),
 		{Method: http.MethodGet, URL: &url.URL{RawQuery: "code=c&state=s&ignored=%zz"}},
+		httptest.NewRequest(http.MethodGet, "https://client.example/cb?response=j&code=", nil),
+		httptest.NewRequest(http.MethodGet, "https://client.example/cb?state=s&error_description=x", nil),
 	}
 	unreadBody := &trackingReadCloser{}
 	earlyMixed := &http.Request{
@@ -105,6 +107,11 @@ func TestCallbackParserRejectsMalformedTransportsAndValues(t *testing.T) {
 		Body:   unreadBody, ContentLength: int64(len("code=c&state=s")),
 	}
 	requests = append(requests, earlyMixed)
+	for _, body := range []string{"response=j&code=", "state=s&error_description=x"} {
+		request := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		requests = append(requests, request)
+	}
 	badType := httptest.NewRequest(http.MethodPost, "https://client.example/cb", strings.NewReader("code=c&state=s"))
 	badType.Header.Set("Content-Type", "application/json")
 	requests = append(requests, badType)
