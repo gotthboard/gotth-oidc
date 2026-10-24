@@ -235,6 +235,9 @@ func (client *Client) complete(ctx context.Context, response AuthorizationRespon
 		return Completion{}, fmt.Errorf("OIDC authorization response issuer is invalid")
 	}
 	if response.Error != nil {
+		if response.Error.Code == "" {
+			return Completion{}, fmt.Errorf("OIDC authorization response error code is required")
+		}
 		if err := validateAuthorizationErrorFields(response.Error.Code, response.Error.Description, response.Error.URI); err != nil {
 			return Completion{}, err
 		}

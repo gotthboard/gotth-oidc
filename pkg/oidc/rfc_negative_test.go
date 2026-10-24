@@ -552,6 +552,7 @@ func TestCompletionRejectsAttemptAndResponseMismatches(t *testing.T) {
 		t.Fatalf("authorization error = %v, want original", err)
 	}
 	for _, malformed := range []*AuthorizationError{
+		{},
 		{Code: "bad\nerror"},
 		{Code: "denied", Description: strings.Repeat("x", 4097)},
 		{Code: "denied", URI: strings.Repeat("x", 2049)},
