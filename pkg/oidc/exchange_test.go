@@ -257,6 +257,11 @@ func (harness *oidcExchangeHarness) serveHTTP(writer http.ResponseWriter, reques
 			subject = "subject-1"
 		}
 		claims := map[string]any{"iss": harness.issuer, "aud": "gotth-bb", "sub": subject, "name": "UserInfo Name", "email": "userinfo@example.com", "email_verified": true, "picture": harness.server.URL + "/userinfo-picture"}
+		if harness.userInfoMode == "encrypted" {
+			writer.Header().Set("Content-Type", "application/jwt")
+			_, _ = writer.Write([]byte("a.b.c.d.e"))
+			return
+		}
 		if strings.HasPrefix(harness.userInfoMode, "signed") {
 			if harness.userInfoMode == "signed-wrong-issuer" {
 				claims["iss"] = "https://wrong.example"

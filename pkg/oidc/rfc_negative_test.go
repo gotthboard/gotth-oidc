@@ -391,6 +391,11 @@ func TestJARMRejectsInvalidClaims(t *testing.T) {
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(-time.Minute).Unix(), "code": "c", "state": "s"},
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix()},
 		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "c", "error": "denied", "state": "s"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "bad\ncode", "state": "s"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "code": "c", "state": "bad\nstate"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "error": "bad\nerror", "state": "s"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "error": "denied", "error_description": strings.Repeat("x", 4097), "state": "s"},
+		{"iss": harness.issuer, "aud": "gotth-bb", "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "error": "denied", "error_uri": strings.Repeat("x", 2049), "state": "s"},
 	} {
 		raw, signErr := jwt.Signed(signer).Claims(claims).Serialize()
 		if signErr != nil {
@@ -444,6 +449,10 @@ func TestEncryptedIDTokenAndJARMPaths(t *testing.T) {
 
 	provider = harness.discover(t)
 	provider.enableJARM = true
+	provider.tokenDecrypter = staticJWTDecrypter{value: strings.Repeat("x", maxAuthorizationResponseBytes+1)}
+	if response, err := provider.verifyAuthorizationResponseJWT(context.Background(), "a.b.c.d.e", time.Now()); err == nil || response != (AuthorizationResponse{}) {
+		t.Fatalf("oversized decrypted JARM = (%+v, %v)", response, err)
+	}
 	provider.tokenDecrypter = JOSEDecrypter{Key: rsaKey, KeyAlgorithms: []jose.KeyAlgorithm{jose.RSA_OAEP_256}, ContentEncryptions: []jose.ContentEncryption{jose.A256GCM}}
 	jarmSigner, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: harness.signingKey}, new(jose.SignerOptions).WithType("oauth-authz-resp+jwt").WithHeader(jose.HeaderKey("kid"), "exchange-test-key"))
 	now := time.Now().UTC()
@@ -597,6 +606,11 @@ func TestUserInfoSignedAndFailureResponses(t *testing.T) {
 		if claims, err := provider.fetchUserInfo(context.Background(), tokens, "subject-1", time.Now()); err == nil || claims != nil {
 			t.Fatalf("UserInfo mode %q = (%v, %v), want nil/error", mode, claims, err)
 		}
+	}
+	harness.userInfoMode = "encrypted"
+	provider.tokenDecrypter = staticJWTDecrypter{value: strings.Repeat("x", maxDirectResponseBytes+1)}
+	if claims, err := provider.fetchUserInfo(context.Background(), tokens, "subject-1", time.Now()); err == nil || claims != nil {
+		t.Fatalf("oversized decrypted UserInfo = (%v, %v), want nil/error", claims, err)
 	}
 	harness.userInfoMode = ""
 	harness.userInfoSubject = "other-subject"

@@ -100,7 +100,7 @@ func (provider discoveredOIDCProvider) verifyAuthorizationResponseJWT(ctx contex
 			return AuthorizationResponse{}, fmt.Errorf("OIDC JWT authorization response is encrypted but no decrypter is configured")
 		}
 		decrypted, err := provider.tokenDecrypter.DecryptJWT(ctx, raw)
-		if err != nil {
+		if err != nil || len(decrypted) == 0 || len(decrypted) > maxAuthorizationResponseBytes {
 			return AuthorizationResponse{}, fmt.Errorf("decrypt OIDC authorization response failed")
 		}
 		raw = decrypted
@@ -126,6 +126,15 @@ func (provider discoveredOIDCProvider) verifyAuthorizationResponseJWT(ctx contex
 	}
 	if err := json.Unmarshal(payload, &claims); err != nil || claims.Issuer != provider.issuer || len(claims.Audience) != 1 || claims.Audience[0] != provider.oauth2Config.ClientID || claims.ExpiresAt <= now.Unix() || claims.ExpiresAt > now.Add(10*time.Minute).Unix() || claims.IssuedAt > now.Add(time.Minute).Unix() {
 		return AuthorizationResponse{}, fmt.Errorf("OIDC authorization response JWT claims are invalid")
+	}
+	if err := validateAuthorizationResponseValue("code", claims.Code, maxAuthorizationResponseBytes, true); err != nil {
+		return AuthorizationResponse{}, err
+	}
+	if err := validateAuthorizationResponseValue("state", claims.State, maxAuthorizationResponseBytes, true); err != nil {
+		return AuthorizationResponse{}, err
+	}
+	if err := validateAuthorizationErrorFields(claims.Error, claims.Description, claims.ErrorURI); err != nil {
+		return AuthorizationResponse{}, err
 	}
 	response := AuthorizationResponse{Code: claims.Code, State: claims.State, Issuer: claims.Issuer}
 	if claims.Error != "" {

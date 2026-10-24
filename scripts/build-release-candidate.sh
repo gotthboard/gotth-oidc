@@ -79,7 +79,7 @@ build_archive() {
     GIT_ALTERNATE_OBJECT_DIRECTORIES="$source_objects" \
     git --git-dir="$archive_git" -c core.attributesFile=/dev/null -c tar.umask=0002 \
     archive --format=tar --prefix="$stem/" "$commit" >"$tarfile"
-  gzip -n -9 <"$tarfile" >"$destination"
+  env -i PATH="$PATH" gzip -n -9 <"$tarfile" >"$destination"
 }
 build_archive "$archive"
 build_archive "$tmp/rebuilt.tar.gz"

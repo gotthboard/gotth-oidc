@@ -65,6 +65,11 @@ if ! diff -qr "$tmp/release" "$tmp/release-umask" >/dev/null; then
   echo "release output inherited tar.umask" >&2
   exit 1
 fi
+GZIP=--rsyncable "$builder" v1.0.0 "$tmp/release-gzip-env" HEAD >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-gzip-env" >/dev/null; then
+  echo "release output inherited GZIP options" >&2
+  exit 1
+fi
 printf 'README.md export-ignore\n' >"$tmp/global-attributes"
 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.attributesFile GIT_CONFIG_VALUE_0="$tmp/global-attributes" \
   "$builder" v1.0.0 "$tmp/release-global-attributes" HEAD >/dev/null

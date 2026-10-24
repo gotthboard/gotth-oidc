@@ -217,7 +217,7 @@ func (provider discoveredOIDCProvider) fetchUserInfo(ctx context.Context, tokens
 				return nil, fmt.Errorf("OIDC UserInfo JWT is encrypted but no decrypter is configured")
 			}
 			raw, err = provider.tokenDecrypter.DecryptJWT(ctx, raw)
-			if err != nil {
+			if err != nil || len(raw) == 0 || len(raw) > maxDirectResponseBytes {
 				return nil, fmt.Errorf("decrypt OIDC UserInfo JWT failed")
 			}
 		}

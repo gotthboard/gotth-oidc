@@ -29,6 +29,23 @@ func (err *AuthorizationError) Error() string {
 	return "OIDC authorization failed: " + err.Code
 }
 
+func validateAuthorizationResponseValue(name, value string, maximum int, token bool) error {
+	if len(value) > maximum || !utf8.ValidString(value) || strings.IndexFunc(value, unicode.IsControl) >= 0 || (token && strings.IndexFunc(value, unicode.IsSpace) >= 0) {
+		return fmt.Errorf("OIDC authorization response %s is invalid", name)
+	}
+	return nil
+}
+
+func validateAuthorizationErrorFields(code, description, uri string) error {
+	if err := validateAuthorizationResponseValue("error", code, maxAuthorizationResponseBytes, true); err != nil {
+		return err
+	}
+	if err := validateAuthorizationResponseValue("error description", description, 4096, false); err != nil {
+		return err
+	}
+	return validateAuthorizationResponseValue("error URI", uri, 2048, false)
+}
+
 // AuthorizationResponse is a parsed query, form-post, or JWT authorization
 // response. Duplicate and mixed encodings are rejected by ParseCallback.
 type AuthorizationResponse struct {
@@ -79,24 +96,15 @@ func ParseCallback(request *http.Request) (AuthorizationResponse, error) {
 			return AuthorizationResponse{}, fmt.Errorf("OIDC callback contains an unknown or duplicate parameter")
 		}
 	}
-	bounded := func(name, value string, maximum int, token bool) error {
-		if len(value) > maximum || !utf8.ValidString(value) || strings.IndexFunc(value, unicode.IsControl) >= 0 || (token && strings.IndexFunc(value, unicode.IsSpace) >= 0) {
-			return fmt.Errorf("OIDC callback %s is invalid", name)
-		}
-		return nil
-	}
 	for name, value := range map[string]string{
 		"code": values.Get("code"), "state": values.Get("state"), "issuer": values.Get("iss"),
 		"response": values.Get("response"), "error": values.Get("error"),
 	} {
-		if err := bounded(name, value, maxAuthorizationResponseBytes, true); err != nil {
+		if err := validateAuthorizationResponseValue(name, value, maxAuthorizationResponseBytes, true); err != nil {
 			return AuthorizationResponse{}, err
 		}
 	}
-	if err := bounded("error description", values.Get("error_description"), 4096, false); err != nil {
-		return AuthorizationResponse{}, err
-	}
-	if err := bounded("error URI", values.Get("error_uri"), 2048, false); err != nil {
+	if err := validateAuthorizationErrorFields(values.Get("error"), values.Get("error_description"), values.Get("error_uri")); err != nil {
 		return AuthorizationResponse{}, err
 	}
 	mode := ResponseModeQuery

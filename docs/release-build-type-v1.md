@@ -9,7 +9,8 @@ archive, SPDX 2.3 SBOM, MIT license evidence, an unsigned in-toto statement with
 a SLSA provenance v1 predicate, and `SHA256SUMS`. It builds the source archive
 twice from an isolated bare Git directory with system/global configuration,
 external attributes, repository-local info attributes, replacement refs, and the
-archive mode mask controlled; it rejects unequal bytes. Checked-in `.gitattributes` remain part of
+archive mode mask and gzip environment controlled; it rejects unequal bytes.
+Checked-in `.gitattributes` remain part of
 the source contract. The destination must not exist; the builder
 validates its selected ref and its own committed bytes, writes only to a private
 staging directory, and atomically renames the complete set into place. Failures
