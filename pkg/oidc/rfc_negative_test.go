@@ -520,7 +520,7 @@ func TestAuthorizationCapabilityFailures(t *testing.T) {
 func TestCompletionRejectsAttemptAndResponseMismatches(t *testing.T) {
 	harness := newOIDCExchangeHarness(t)
 	defer harness.server.Close()
-	client, err := New(context.Background(), Config{IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret", RedirectURL: "https://forum.example/cb", Transport: harness.server.Client().Transport, Entropy: bytes.NewReader(sequentialBytes(1024)), AllowInsecureLoopback: true})
+	client, err := New(context.Background(), Config{IssuerURL: harness.issuer, ClientID: "gotth-bb", ClientSecret: "client-secret", RedirectURL: "https://forum.example/cb", Transport: harness.server.Client().Transport, Entropy: bytes.NewReader(sequentialBytes(1280)), AllowInsecureLoopback: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,6 +545,11 @@ func TestCompletionRejectsAttemptAndResponseMismatches(t *testing.T) {
 	authorization, state = begin()
 	if _, err := client.CompleteResponse(context.Background(), AuthorizationResponse{State: state, Code: "successful-code", Issuer: "https://wrong.example", Mode: ResponseModeQuery}, authorization.Attempt); err == nil {
 		t.Fatal("wrong response issuer accepted")
+	}
+	authorization, state = begin()
+	mixedError := &AuthorizationError{Code: "access_denied"}
+	if _, err := client.CompleteResponse(context.Background(), AuthorizationResponse{State: state, Code: "code", Error: mixedError, Mode: ResponseModeQuery}, authorization.Attempt); err == nil || errors.Is(err, mixedError) {
+		t.Fatalf("mixed manual success/error response accepted: %v", err)
 	}
 	authorization, state = begin()
 	authorizationError := &AuthorizationError{Code: "access_denied"}

@@ -15,8 +15,8 @@ For an admitted release:
 
 1. Select a version from this repository's actual compatibility change.
 2. Verify an exact clean Forgejo commit with the repository's required gates.
-3. Update `docs/CHANGELOG.md` with the exact version, commit, compatibility
-   effect, verification, and known limitations.
+3. Update `docs/CHANGELOG.md` with the exact version, compatibility effect,
+   verification, and known limitations.
 4. Create and push a new annotated tag on canonical Forgejo. Never move or
    replace an existing tag.
 5. Verify exact head and tag parity at
@@ -24,6 +24,10 @@ For an admitted release:
    mirror.
 6. Build any artifacts from the exact public GitHub clone, publish checksums,
    and create the GitHub release for that already-mirrored tag.
+
+The committed changelog must not attempt to name its own commit. Record the exact
+peeled release commit in the annotated tag, hosted Release, provenance, and
+candidate-bound external evidence.
 
 Forgejo remains the development source of truth. GitHub is the public clone,
 Go import, and release-distribution endpoint. Failure of mirror or release
@@ -56,7 +60,8 @@ consumer migrations, tagging, pushing, hosted Release creation, and deployment
 are separate outcomes.
 
 From an exact committed candidate, build the source release set into a
-nonexistent destination whose parent already exists outside the repository:
+nonexistent destination whose parent is outside every registered worktree and
+the repository's common Git directory:
 
     scripts/build-release-candidate.sh v1.0.0 OUTPUT_DIR COMMIT
     (cd OUTPUT_DIR && sha256sum -c SHA256SUMS)

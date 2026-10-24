@@ -197,6 +197,9 @@ func (client *Client) complete(ctx context.Context, response AuthorizationRespon
 	if ctx == nil {
 		return Completion{}, fmt.Errorf("OIDC completion context is required")
 	}
+	if response.Error != nil && (response.Code != "" || response.ResponseJWT != "") {
+		return Completion{}, fmt.Errorf("OIDC authorization response combines success and error")
+	}
 	state := response.State
 	if response.ResponseJWT != "" {
 		outerMode := response.Mode

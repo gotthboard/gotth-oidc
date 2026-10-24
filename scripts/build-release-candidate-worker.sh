@@ -58,6 +58,19 @@ case "$final_output/" in
   "$root/"*) echo "OUTPUT_DIR must be outside the source repository" >&2; exit 2 ;;
   "$git_common_dir/"*) echo "OUTPUT_DIR must be outside the repository Git directory" >&2; exit 2 ;;
 esac
+while IFS= read -r worktree_line; do
+  case "$worktree_line" in
+    "worktree "*)
+      worktree_path=$(printf '%s\n' "$worktree_line" | sed 's/^worktree //')
+      worktree_root=$(readlink -m -- "$worktree_path")
+      case "$final_output/" in
+        "$worktree_root/"*) echo "OUTPUT_DIR must be outside every registered worktree" >&2; exit 2 ;;
+      esac
+      ;;
+  esac
+done <<EOT
+$(git worktree list --porcelain)
+EOT
 output_parent=$(dirname -- "$final_output")
 if [ ! -d "$output_parent" ]; then
   echo "OUTPUT_DIR parent must already exist" >&2

@@ -5,7 +5,12 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 builder="$root/scripts/build-release-candidate.sh"
 candidate=$(git -C "$root" rev-parse HEAD)
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+sibling=
+cleanup() {
+  if [ -n "$sibling" ]; then git -C "$root" worktree remove --force "$sibling" >/dev/null 2>&1 || true; fi
+  rm -rf "$tmp"
+}
+trap cleanup EXIT HUP INT TERM
 sh -n "$builder"
 
 for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01 v1.0.0+meta v1.0.0+incompatible v2.0.0 v999.0.0; do
@@ -70,6 +75,16 @@ if "$builder" v1.0.0 "$git_probe" "$candidate" >/dev/null 2>&1; then
   exit 1
 fi
 test ! -e "$git_probe"
+sibling="$tmp/sibling-worktree"
+git -C "$root" worktree add --quiet --detach "$sibling" "$candidate"
+sibling_probe="$sibling/.release-output-probe"
+if "$builder" v1.0.0 "$sibling_probe" "$candidate" >/dev/null 2>&1; then
+  echo "release builder accepted output inside a sibling registered worktree" >&2
+  exit 1
+fi
+test ! -e "$sibling_probe"
+git -C "$root" worktree remove --force "$sibling"
+sibling=
 
 mkdir "$tmp/existing"
 printf 'preserve me\n' >"$tmp/existing/stale"
@@ -89,6 +104,19 @@ fi
   cd "$tmp/release"
   sha256sum -c SHA256SUMS >/dev/null
 )
+mkdir "$tmp/poison-path"
+for tool in git go python3 date gzip; do
+  cat >"$tmp/poison-path/$tool" <<'SH'
+#!/bin/sh
+exit 99
+SH
+  chmod +x "$tmp/poison-path/$tool"
+done
+PATH="$tmp/poison-path" "$builder" v1.0.0 "$tmp/release-poison-path" "$candidate" >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-poison-path" >/dev/null; then
+  echo "release output inherited caller PATH" >&2
+  exit 1
+fi
 mkdir "$tmp/python-path"
 cat >"$tmp/python-path/sitecustomize.py" <<'PY'
 import sys
