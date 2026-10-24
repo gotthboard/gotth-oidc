@@ -83,7 +83,6 @@ Risks / non-goals:
 
 ### 2026-09-06 00:54 CDT — Route vulnerability reports through GitHub
 
-Commit: current commit; hash assigned by Git after commit
 
 Affected files:
 

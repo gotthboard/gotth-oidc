@@ -99,6 +99,7 @@ func TestRecoverLoginMaterialRejectsStateAndEnvelopeTampering(t *testing.T) {
 		{name: "empty state", stateHash: protected.stateHash[:], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},
 		{name: "malformed state", state: "%%%", stateHash: protected.stateHash[:], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},
 		{name: "short state", state: shortState, stateHash: protected.stateHash[:], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},
+		{name: "oversized state", state: strings.Repeat("A", base64.RawURLEncoding.EncodedLen(loginSecretBytes)+1), stateHash: protected.stateHash[:], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},
 		{name: "noncanonical state", state: noncanonicalState, stateHash: protected.stateHash[:], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},
 		{name: "wrong state", state: other.state, stateHash: protected.stateHash[:], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},
 		{name: "short state hash", state: material.state, stateHash: protected.stateHash[:31], nonce: protected.nonceCiphertext[:], verifier: protected.pkceVerifierCiphertext[:]},

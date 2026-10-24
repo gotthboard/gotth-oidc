@@ -19,9 +19,13 @@ import (
 // Complexity: time and auxiliary space are tight Theta(1): all accepted input
 // sizes are fixed, with one hash and two AES-GCM opens over 43-byte plaintexts.
 func recoverLoginMaterial(stateValue string, stateHash, nonceEnvelope, verifierEnvelope []byte) (loginMaterial, error) {
-	state, err := base64.RawURLEncoding.Strict().DecodeString(stateValue)
-	defer clear(state)
-	if err != nil || len(state) != loginSecretBytes {
+	if len(stateValue) != base64.RawURLEncoding.EncodedLen(loginSecretBytes) {
+		return loginMaterial{}, fmt.Errorf("login state has an invalid encoding or length")
+	}
+	var state [loginSecretBytes]byte
+	decodedLength, err := base64.RawURLEncoding.Strict().Decode(state[:], []byte(stateValue))
+	defer clear(state[:])
+	if err != nil || decodedLength != loginSecretBytes {
 		return loginMaterial{}, fmt.Errorf("login state has an invalid encoding or length")
 	}
 	stateValueBytes := []byte(stateValue)
@@ -40,7 +44,7 @@ func recoverLoginMaterial(stateValue string, stateHash, nonceEnvelope, verifierE
 			return openedSecret{}, fmt.Errorf("login protection envelope has an invalid format")
 		}
 		var key [sha256.Size]byte
-		mac := hmac.New(sha256.New, state)
+		mac := hmac.New(sha256.New, state[:])
 		_, _ = mac.Write([]byte(label))
 		mac.Sum(key[:0])
 		defer clear(key[:])
@@ -84,7 +88,7 @@ func recoverLoginMaterial(stateValue string, stateHash, nonceEnvelope, verifierE
 	}
 	defer clear(verifier.encoded)
 	defer clear(verifier.decoded[:])
-	if bytes.Equal(state, nonce.decoded[:]) || bytes.Equal(state, verifier.decoded[:]) || bytes.Equal(nonce.decoded[:], verifier.decoded[:]) {
+	if bytes.Equal(state[:], nonce.decoded[:]) || bytes.Equal(state[:], verifier.decoded[:]) || bytes.Equal(nonce.decoded[:], verifier.decoded[:]) {
 		return loginMaterial{}, fmt.Errorf("recovered login material repeats a value")
 	}
 	return loginMaterial{
