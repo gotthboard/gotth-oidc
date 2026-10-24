@@ -7,7 +7,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 sh -n "$builder"
 
-for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01 v1.0.0+meta v1.0.0+incompatible; do
+for invalid in v1x.0.0 v1.0.0evil v1.0.0/extra 1.0.0 v01.0.0 v1.0.0-01 v1.0.0-rc.01 v1.0.0+meta v1.0.0+incompatible v2.0.0 v999.0.0; do
   if "$builder" "$invalid" "$tmp/invalid" HEAD >/dev/null 2>&1; then
     echo "release builder accepted invalid version: $invalid" >&2
     exit 1
@@ -63,6 +63,22 @@ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=tar.umask GIT_CONFIG_VALUE_0=0077 \
   "$builder" v1.0.0 "$tmp/release-umask" HEAD >/dev/null
 if ! diff -qr "$tmp/release" "$tmp/release-umask" >/dev/null; then
   echo "release output inherited tar.umask" >&2
+  exit 1
+fi
+printf 'README.md export-ignore\n' >"$tmp/global-attributes"
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.attributesFile GIT_CONFIG_VALUE_0="$tmp/global-attributes" \
+  "$builder" v1.0.0 "$tmp/release-global-attributes" HEAD >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-global-attributes" >/dev/null; then
+  echo "release output inherited core.attributesFile" >&2
+  exit 1
+fi
+git clone --quiet --shared "$root" "$tmp/poisoned-repo"
+git -C "$tmp/poisoned-repo" checkout --quiet --detach "$(git -C "$root" rev-parse HEAD)"
+poisoned_git_dir=$(git -C "$tmp/poisoned-repo" rev-parse --absolute-git-dir)
+printf 'README.md export-ignore\n' >"$poisoned_git_dir/info/attributes"
+"$tmp/poisoned-repo/scripts/build-release-candidate.sh" v1.0.0 "$tmp/release-info-attributes" HEAD >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-info-attributes" >/dev/null; then
+  echo "release output inherited info/attributes" >&2
   exit 1
 fi
 before=$(find "$tmp/release" -type f -print0 | sort -z | xargs -0 sha256sum)

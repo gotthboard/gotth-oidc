@@ -12,7 +12,7 @@ if [ "$#" -eq 3 ]; then ref=$3; fi
 if ! python3 - "$version" <<'PY'
 import re, sys
 match = re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?", sys.argv[1])
-if match is None:
+if match is None or int(match.group(1)) > 1:
     raise SystemExit(1)
 prerelease = match.group(4)
 if prerelease and any(part.isdigit() and len(part) > 1 and part.startswith("0") for part in prerelease.split(".")):
@@ -62,9 +62,21 @@ license_evidence="$output/$stem.LICENSE-EVIDENCE.txt"
 provenance="$output/$stem.provenance.json"
 checksums="$output/SHA256SUMS"
 
+archive_git="$tmp/archive.git"
+archive_home="$tmp/home"
+archive_template="$tmp/empty-template"
+mkdir -p "$archive_home" "$archive_template"
+env -i PATH="$PATH" HOME="$archive_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+  git init --quiet --bare --template="$archive_template" "$archive_git"
+source_objects=$(readlink -f -- "$(git rev-parse --git-common-dir)/objects")
 build_archive() {
   destination=$1
-  git -c tar.umask=0002 archive --format=tar --prefix="$stem/" "$commit" | gzip -n -9 >"$destination"
+  tarfile="$tmp/source.tar"
+  env -i PATH="$PATH" HOME="$archive_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+    GIT_ALTERNATE_OBJECT_DIRECTORIES="$source_objects" \
+    git --git-dir="$archive_git" -c core.attributesFile=/dev/null -c tar.umask=0002 \
+    archive --format=tar --prefix="$stem/" "$commit" >"$tarfile"
+  gzip -n -9 <"$tarfile" >"$destination"
 }
 build_archive "$archive"
 build_archive "$tmp/rebuilt.tar.gz"
