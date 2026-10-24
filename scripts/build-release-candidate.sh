@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+# Every source identity is the named object, never an ambient replacement ref.
+export GIT_NO_REPLACE_OBJECTS=1
+
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
   echo "usage: $0 VERSION OUTPUT_DIR [REF]" >&2
   exit 2
@@ -66,13 +69,13 @@ archive_git="$tmp/archive.git"
 archive_home="$tmp/home"
 archive_template="$tmp/empty-template"
 mkdir -p "$archive_home" "$archive_template"
-env -i PATH="$PATH" HOME="$archive_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+env -i PATH="$PATH" HOME="$archive_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
   git init --quiet --bare --template="$archive_template" "$archive_git"
 source_objects=$(readlink -f -- "$(git rev-parse --git-common-dir)/objects")
 build_archive() {
   destination=$1
   tarfile="$tmp/source.tar"
-  env -i PATH="$PATH" HOME="$archive_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+  env -i PATH="$PATH" HOME="$archive_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
     GIT_ALTERNATE_OBJECT_DIRECTORIES="$source_objects" \
     git --git-dir="$archive_git" -c core.attributesFile=/dev/null -c tar.umask=0002 \
     archive --format=tar --prefix="$stem/" "$commit" >"$tarfile"

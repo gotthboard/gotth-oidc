@@ -81,6 +81,21 @@ if ! diff -qr "$tmp/release" "$tmp/release-info-attributes" >/dev/null; then
   echo "release output inherited info/attributes" >&2
   exit 1
 fi
+git clone --quiet --shared "$root" "$tmp/replaced-repo"
+git -C "$tmp/replaced-repo" checkout --quiet --detach "$(git -C "$root" rev-parse HEAD)"
+git -C "$tmp/replaced-repo" config user.name "release-tooling test"
+git -C "$tmp/replaced-repo" config user.email "release-tooling@example.invalid"
+sed -i 's|^module .*|module example.invalid/replaced|' "$tmp/replaced-repo/go.mod"
+git -C "$tmp/replaced-repo" add go.mod
+git -C "$tmp/replaced-repo" commit --quiet -m "poison replacement"
+replacement=$(git -C "$tmp/replaced-repo" rev-parse HEAD)
+candidate=$(git -C "$root" rev-parse HEAD)
+git -C "$tmp/replaced-repo" replace "$candidate" "$replacement"
+"$tmp/replaced-repo/scripts/build-release-candidate.sh" v1.0.0 "$tmp/release-replacement-ref" "$candidate" >/dev/null
+if ! diff -qr "$tmp/release" "$tmp/release-replacement-ref" >/dev/null; then
+  echo "release output honored a Git replacement ref" >&2
+  exit 1
+fi
 before=$(find "$tmp/release" -type f -print0 | sort -z | xargs -0 sha256sum)
 if "$builder" v1.0.0 "$tmp/release" HEAD >/dev/null 2>&1; then
   echo "release builder overwrote an existing release set" >&2
